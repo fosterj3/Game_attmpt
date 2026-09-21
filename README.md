@@ -1,5 +1,14 @@
 # Cascade Quest
 
+## 🎮 Play it now
+
+1. Install the free **Expo Go** app ([iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
+2. Open this link on your phone (or scan the QR code there) to launch the game:
+
+**https://expo.dev/preview/update?message=Initial%20release&updateRuntimeVersion=1.0.0&createdAt=2026-09-21T01%3A52%3A46.054Z&slug=cascade-quest&projectId=60e0ceb5-eb77-43ea-b46c-06cb85d89d73&group=5efdb5e5-a120-465e-aa6f-bb55e3f679f9**
+
+Share that same link with anyone else who has Expo Go installed. Re-publish an update any time with `npx eas update --branch preview --environment preview` and share the new link it prints.
+
 A mobile match-3 puzzle game built with Expo (React Native + TypeScript), designed around the engagement mechanics that drive retention in games like Candy Crush and Royal Match:
 
 - **Core loop** — swap tiles, trigger matches and cascades, hit a score target within a move limit. Fast, frequent wins.

@@ -20,6 +20,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "60e0ceb5-eb77-43ea-b46c-06cb85d89d73"
+      }
+    },
+    "owner": "jlfoster116",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/60e0ceb5-eb77-43ea-b46c-06cb85d89d73"
     }
   }
 }
