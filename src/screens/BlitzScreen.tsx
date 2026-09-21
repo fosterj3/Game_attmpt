@@ -213,6 +213,10 @@ export default function BlitzScreen({ navigation }: Props) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         await delay(IGNITE_PAUSE_MS);
         setIgniting(false);
+        // The ignite freeze is a forced celebration, not the player slowing
+        // down - restart the fire-pace clock from when they regain control
+        // so the freeze itself can never be what makes fire expire.
+        lastMatchAtRef.current = Date.now();
       }
 
       runCascades(nextBoard);
