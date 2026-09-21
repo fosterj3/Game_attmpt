@@ -103,7 +103,7 @@ export function findMatchedPositions(board: Board): Position[] {
   });
 }
 
-function clearMatches(board: Board, positions: Position[]): Board {
+export function clearMatches(board: Board, positions: Position[]): Board {
   const next = cloneBoard(board);
   for (const { row, col } of positions) {
     next[row][col] = null;
@@ -111,7 +111,7 @@ function clearMatches(board: Board, positions: Position[]): Board {
   return next;
 }
 
-function collapseColumns(board: Board): Board {
+export function collapseColumns(board: Board): Board {
   const size = board.length;
   const next = cloneBoard(board);
   for (let col = 0; col < size; col++) {

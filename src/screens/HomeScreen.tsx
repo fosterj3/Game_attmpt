@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import HowToPlayModal from '../components/HowToPlayModal';
 import LivesBadge from '../components/LivesBadge';
 import StreakBanner from '../components/StreakBanner';
 import { LEVELS } from '../data/levels';
@@ -17,7 +18,10 @@ export default function HomeScreen({ navigation }: Props) {
   const coins = usePlayerStore((s) => s.coins);
   const lives = usePlayerStore((s) => s.lives);
   const totalStars = usePlayerStore((s) => s.totalStars());
+  const soundEnabled = usePlayerStore((s) => s.soundEnabled);
+  const setSoundEnabled = usePlayerStore((s) => s.setSoundEnabled);
   const title = titleForStars(totalStars);
+  const [howToPlayVisible, setHowToPlayVisible] = useState(false);
 
   return (
     <View style={styles.screen}>
@@ -29,6 +33,12 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.coinsChip}>
           <Text style={styles.coinsText}>{'🪙'} {coins}</Text>
         </View>
+        <Pressable onPress={() => setHowToPlayVisible(true)} style={styles.iconChip} hitSlop={8}>
+          <Text style={styles.iconChipText}>{'?'}</Text>
+        </Pressable>
+        <Pressable onPress={() => setSoundEnabled(!soundEnabled)} style={styles.iconChip} hitSlop={8}>
+          <Text style={styles.iconChipText}>{soundEnabled ? '🔊' : '🔇'}</Text>
+        </Pressable>
         <LivesBadge />
       </View>
 
@@ -64,6 +74,8 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.outOfLives}>Out of lives! Wait for one to regenerate to keep playing.</Text>
         )}
       </ScrollView>
+
+      <HowToPlayModal visible={howToPlayVisible} onClose={() => setHowToPlayVisible(false)} />
     </View>
   );
 }
@@ -100,6 +112,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   coinsText: { color: COLORS.accent, fontWeight: '700' },
+  iconChip: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconChipText: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
   scrollContent: {
     padding: 16,
     gap: 12,

@@ -21,6 +21,8 @@ type PlayerState = {
   lastPlayedDate: string | null;
   levelProgress: Record<number, LevelProgress>;
   unlockedLevelId: number;
+  hasSeenHowToPlay: boolean;
+  soundEnabled: boolean;
 
   hydrate: () => Promise<void>;
   recordDailyPlay: () => void;
@@ -28,11 +30,23 @@ type PlayerState = {
   regenLivesIfDue: () => void;
   completeLevel: (levelId: number, score: number, stars: 0 | 1 | 2 | 3) => void;
   totalStars: () => number;
+  markHowToPlaySeen: () => void;
+  setSoundEnabled: (enabled: boolean) => void;
 };
 
 async function persist(state: Partial<PlayerState>) {
-  const { hydrated, hydrate, recordDailyPlay, spendLife, regenLivesIfDue, completeLevel, totalStars, ...rest } =
-    state as PlayerState;
+  const {
+    hydrated,
+    hydrate,
+    recordDailyPlay,
+    spendLife,
+    regenLivesIfDue,
+    completeLevel,
+    totalStars,
+    markHowToPlaySeen,
+    setSoundEnabled,
+    ...rest
+  } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
 }
 
@@ -55,6 +69,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   lastPlayedDate: null,
   levelProgress: {},
   unlockedLevelId: 1,
+  hasSeenHowToPlay: false,
+  soundEnabled: true,
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -143,5 +159,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   totalStars: () => {
     return Object.values(get().levelProgress).reduce((sum, p) => sum + p.bestStars, 0);
+  },
+
+  markHowToPlaySeen: () => {
+    set({ hasSeenHowToPlay: true });
+    persist({ ...get(), hasSeenHowToPlay: true });
+  },
+
+  setSoundEnabled: (enabled) => {
+    set({ soundEnabled: enabled });
+    persist({ ...get(), soundEnabled: enabled });
   },
 }));

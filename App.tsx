@@ -6,16 +6,22 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { COLORS } from './src/game/theme';
+import { setMuted } from './src/game/sound';
 import { usePlayerStore } from './src/state/playerStore';
 
 export default function App() {
   const hydrate = usePlayerStore((s) => s.hydrate);
   const hydrated = usePlayerStore((s) => s.hydrated);
+  const soundEnabled = usePlayerStore((s) => s.soundEnabled);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     hydrate().then(() => setReady(true));
   }, [hydrate]);
+
+  useEffect(() => {
+    setMuted(!soundEnabled);
+  }, [soundEnabled]);
 
   if (!ready || !hydrated) {
     return (
