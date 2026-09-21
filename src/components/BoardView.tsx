@@ -16,6 +16,7 @@ type Props = {
   poppingIds?: Set<number>;
   fallSeed?: number;
   swap?: SwapState | null;
+  hint?: { a: Position; b: Position } | null;
 };
 
 export default function BoardView({
@@ -25,6 +26,7 @@ export default function BoardView({
   poppingIds,
   fallSeed = 0,
   swap = null,
+  hint = null,
 }: Props) {
   const { width } = useWindowDimensions();
   const size = board.length;
@@ -38,6 +40,10 @@ export default function BoardView({
           {row.map((tile, colIndex) => {
             if (!tile) return <View key={colIndex} style={{ width: tileSize, height: tileSize }} />;
             const isSelected = selected?.row === rowIndex && selected?.col === colIndex;
+            const isHinted =
+              !!hint &&
+              ((hint.a.row === rowIndex && hint.a.col === colIndex) ||
+                (hint.b.row === rowIndex && hint.b.col === colIndex));
 
             let swapAnim = null;
             if (swap) {
@@ -58,6 +64,7 @@ export default function BoardView({
                 popping={poppingIds?.has(tile.id)}
                 fallSeed={fallSeed}
                 swapAnim={swapAnim}
+                hinted={isHinted}
               />
             );
           })}

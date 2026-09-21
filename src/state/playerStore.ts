@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { LEVELS } from '../data/levels';
+import { BoostId, getBoost } from '../data/shop';
 
 const STORAGE_KEY = 'match3.player.v1';
 
@@ -29,6 +30,7 @@ type PlayerState = {
   soundEnabled: boolean;
   activeMode: GameMode | null;
   blitzBestScore: number;
+  inventory: Record<BoostId, number>;
 
   hydrate: () => Promise<void>;
   recordDailyPlay: () => void;
@@ -41,6 +43,8 @@ type PlayerState = {
   setMode: (mode: GameMode | null) => void;
   submitBlitzScore: (score: number) => boolean;
   resolveWager: (won: boolean) => { heartsDelta: number; coinsBonus: number };
+  purchaseBoost: (id: BoostId) => boolean;
+  consumeBoost: (id: BoostId) => boolean;
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -57,6 +61,8 @@ async function persist(state: Partial<PlayerState>) {
     setMode,
     submitBlitzScore,
     resolveWager,
+    purchaseBoost,
+    consumeBoost,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -85,6 +91,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   soundEnabled: true,
   activeMode: null,
   blitzBestScore: 0,
+  inventory: { hint: 0, extraMoves: 0, freezeTime: 0 },
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -227,5 +234,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set(next);
     persist({ ...get(), ...next });
     return { heartsDelta: newLives - lives, coinsBonus: 0 };
+  },
+
+  purchaseBoost: (id) => {
+    const { coins, inventory } = get();
+    const price = getBoost(id).price;
+    if (coins < price) return false;
+    const next = {
+      coins: coins - price,
+      inventory: { ...inventory, [id]: inventory[id] + 1 },
+    };
+    set(next);
+    persist({ ...get(), ...next });
+    return true;
+  },
+
+  consumeBoost: (id) => {
+    const { inventory } = get();
+    if (inventory[id] <= 0) return false;
+    const next = { inventory: { ...inventory, [id]: inventory[id] - 1 } };
+    set(next);
+    persist({ ...get(), ...next });
+    return true;
   },
 }));

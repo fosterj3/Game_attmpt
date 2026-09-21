@@ -5,4 +5,5 @@ export type RootStackParamList = {
   Blitz: undefined;
   Leaderboard: undefined;
   Profile: undefined;
+  Shop: undefined;
 };

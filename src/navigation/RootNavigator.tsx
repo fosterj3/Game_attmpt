@@ -7,6 +7,7 @@ import HomeScreen from '../screens/HomeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import ModeSelectScreen from '../screens/ModeSelectScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ShopScreen from '../screens/ShopScreen';
 import { usePlayerStore } from '../state/playerStore';
 import { RootStackParamList } from './types';
 
@@ -24,6 +25,7 @@ export default function RootNavigator() {
         <Stack.Screen name="Blitz" component={BlitzScreen} />
         <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: true, title: 'Leaderboard' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: 'Profile' }} />
+        <Stack.Screen name="Shop" component={ShopScreen} options={{ headerShown: true, title: 'Shop' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

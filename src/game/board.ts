@@ -161,19 +161,25 @@ export function scoreForClear(clearedCount: number): number {
   return clearedCount * 10 + Math.max(0, clearedCount - 3) * 20;
 }
 
-export function hasAnyValidMove(board: Board): boolean {
+export function findAnyValidMove(board: Board): { a: Position; b: Position } | null {
   const size = board.length;
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       if (col + 1 < size) {
-        const { valid } = trySwap(board, { row, col }, { row, col: col + 1 });
-        if (valid) return true;
+        const a = { row, col };
+        const b = { row, col: col + 1 };
+        if (trySwap(board, a, b).valid) return { a, b };
       }
       if (row + 1 < size) {
-        const { valid } = trySwap(board, { row, col }, { row: row + 1, col });
-        if (valid) return true;
+        const a = { row, col };
+        const b = { row: row + 1, col };
+        if (trySwap(board, a, b).valid) return { a, b };
       }
     }
   }
-  return false;
+  return null;
+}
+
+export function hasAnyValidMove(board: Board): boolean {
+  return findAnyValidMove(board) !== null;
 }

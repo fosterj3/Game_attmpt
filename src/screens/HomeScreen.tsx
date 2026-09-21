@@ -33,9 +33,10 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.profileEmoji}>{title.emoji}</Text>
           <Text style={styles.profileText}>{title.name}</Text>
         </Pressable>
-        <View style={styles.coinsChip}>
+        <Pressable style={styles.coinsChip} onPress={() => navigation.navigate('Shop')}>
           <Text style={styles.coinsText}>{'🪙'} {coins}</Text>
-        </View>
+          <Text style={styles.shopHint}>Shop</Text>
+        </Pressable>
         <Pressable onPress={() => navigation.navigate('ModeSelect')} style={styles.modeChip}>
           <Text style={styles.modeChipText}>{isStory ? '📖 Story' : '⚡ Arcade'}</Text>
         </Pressable>
@@ -137,8 +138,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   coinsText: { color: COLORS.accent, fontWeight: '700' },
+  shopHint: { color: COLORS.textMuted, fontSize: 10, fontWeight: '700' },
   modeChip: {
     backgroundColor: COLORS.surface,
     borderRadius: 20,

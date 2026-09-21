@@ -14,6 +14,7 @@ import { getChapter } from '../data/story';
 import {
   clearMatches,
   collapseColumns,
+  findAnyValidMove,
   findMatchedPositions,
   generateBoard,
   hasAnyValidMove,
@@ -52,6 +53,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const activeMode = usePlayerStore((s) => s.activeMode);
   const lives = usePlayerStore((s) => s.lives);
   const resolveWager = usePlayerStore((s) => s.resolveWager);
+  const inventory = usePlayerStore((s) => s.inventory);
+  const consumeBoost = usePlayerStore((s) => s.consumeBoost);
   const isStory = activeMode === 'story' && !!chapter;
   const hasTimer = level.timeLimitSeconds != null;
 
@@ -70,6 +73,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const [storyPhase, setStoryPhase] = useState<StoryPhase>(isStory ? 'before' : 'playing');
   const [outOfLivesVisible, setOutOfLivesVisible] = useState(false);
   const [wagerAccepted, setWagerAccepted] = useState(false);
+  const [hint, setHint] = useState<{ a: Position; b: Position } | null>(null);
+  const [freezeActive, setFreezeActive] = useState(false);
   const [result, setResult] = useState<{
     won: boolean;
     score: number;
@@ -101,6 +106,8 @@ export default function GameScreen({ route, navigation }: Props) {
     setSelected(null);
     setPoppingIds(new Set());
     setFallSeed((s) => s + 1);
+    setHint(null);
+    setFreezeActive(false);
     return true;
   };
 
@@ -115,12 +122,12 @@ export default function GameScreen({ route, navigation }: Props) {
   const isPaused = storyPhase !== 'playing' || howToPlayVisible || outOfLivesVisible || !!result;
 
   useEffect(() => {
-    if (!hasTimer || isPaused || finished) return;
+    if (!hasTimer || isPaused || finished || freezeActive) return;
     const interval = setInterval(() => {
       setTimeLeft((t) => (t === null ? t : Math.max(0, t - 1)));
     }, 1000);
     return () => clearInterval(interval);
-  }, [hasTimer, isPaused, finished]);
+  }, [hasTimer, isPaused, finished, freezeActive]);
 
   useEffect(() => {
     if (hasTimer && timeLeft === 0 && !finished) {
@@ -223,8 +230,36 @@ export default function GameScreen({ route, navigation }: Props) {
     }
   };
 
+  const canUseBoosts = storyPhase === 'playing' && !busy && !finished;
+
+  const useHintBoost = () => {
+    if (!canUseBoosts || inventory.hint <= 0) return;
+    const move = findAnyValidMove(board);
+    if (!move) return;
+    if (!consumeBoost('hint')) return;
+    playSound('tap');
+    setHint(move);
+    setTimeout(() => setHint(null), 2500);
+  };
+
+  const useExtraMovesBoost = () => {
+    if (finished || inventory.extraMoves <= 0) return;
+    if (!consumeBoost('extraMoves')) return;
+    playSound('tap');
+    setMovesLeft((m) => m + 3);
+  };
+
+  const useFreezeBoost = () => {
+    if (!hasTimer || finished || freezeActive || inventory.freezeTime <= 0) return;
+    if (!consumeBoost('freezeTime')) return;
+    playSound('tap');
+    setFreezeActive(true);
+    setTimeout(() => setFreezeActive(false), 10000);
+  };
+
   const onTilePress = (pos: Position) => {
     if (storyPhase !== 'playing' || busy || finished) return;
+    setHint(null);
     if (!selected) {
       setSelected(pos);
       playSound('tap');
@@ -283,12 +318,44 @@ export default function GameScreen({ route, navigation }: Props) {
           <Text style={[styles.statBadgeValue, movesLow && styles.statBadgeValueDanger]}>{movesLeft}</Text>
         </View>
         {hasTimer && (
-          <View style={[styles.statBadge, timeLow && styles.statBadgeDanger]}>
-            <Text style={styles.statBadgeLabel}>{'⏱ Time left'}</Text>
+          <View style={[styles.statBadge, timeLow && styles.statBadgeDanger, freezeActive && styles.statBadgeFrozen]}>
+            <Text style={styles.statBadgeLabel}>{freezeActive ? '❄️ Frozen' : '⏱ Time left'}</Text>
             <Text style={[styles.statBadgeValue, timeLow && styles.statBadgeValueDanger]}>
               {formatTime(timeLeft ?? 0)}
             </Text>
           </View>
+        )}
+      </View>
+
+      <View style={styles.boostRow}>
+        <Pressable
+          onPress={useHintBoost}
+          disabled={!canUseBoosts || inventory.hint <= 0}
+          style={[styles.boostButton, (!canUseBoosts || inventory.hint <= 0) && styles.boostButtonDisabled]}
+        >
+          <Text style={styles.boostEmoji}>{'💡'}</Text>
+          <Text style={styles.boostCount}>{inventory.hint}</Text>
+        </Pressable>
+        <Pressable
+          onPress={useExtraMovesBoost}
+          disabled={finished || inventory.extraMoves <= 0}
+          style={[styles.boostButton, (finished || inventory.extraMoves <= 0) && styles.boostButtonDisabled]}
+        >
+          <Text style={styles.boostEmoji}>{'➕'}</Text>
+          <Text style={styles.boostCount}>{inventory.extraMoves}</Text>
+        </Pressable>
+        {hasTimer && (
+          <Pressable
+            onPress={useFreezeBoost}
+            disabled={finished || freezeActive || inventory.freezeTime <= 0}
+            style={[
+              styles.boostButton,
+              (finished || freezeActive || inventory.freezeTime <= 0) && styles.boostButtonDisabled,
+            ]}
+          >
+            <Text style={styles.boostEmoji}>{'❄️'}</Text>
+            <Text style={styles.boostCount}>{inventory.freezeTime}</Text>
+          </Pressable>
         )}
       </View>
 
@@ -306,6 +373,7 @@ export default function GameScreen({ route, navigation }: Props) {
           poppingIds={poppingIds}
           fallSeed={fallSeed}
           swap={swapPair ? { a: swapPair.a, b: swapPair.b, progress: swapProgress } : null}
+          hint={hint}
         />
       </View>
 
@@ -399,6 +467,29 @@ const styles = StyleSheet.create({
   statBadgeLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
   statBadgeValue: { color: COLORS.text, fontSize: 20, fontWeight: '800', marginTop: 2 },
   statBadgeValueDanger: { color: COLORS.danger },
+  statBadgeFrozen: {
+    backgroundColor: 'rgba(76,154,255,0.18)',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  boostRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  boostButton: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  boostButtonDisabled: { opacity: 0.35 },
+  boostEmoji: { fontSize: 16 },
+  boostCount: { color: COLORS.text, fontWeight: '800', fontSize: 13 },
   progressTrack: {
     height: 10,
     backgroundColor: COLORS.surface,

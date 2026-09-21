@@ -5,6 +5,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import BlitzResultModal from '../components/BlitzResultModal';
 import BoardView from '../components/BoardView';
 import ComboPopup, { ComboEvent } from '../components/ComboPopup';
+import FireBanner from '../components/FireBanner';
 import {
   clearMatches,
   collapseColumns,
@@ -24,6 +25,8 @@ import { usePlayerStore } from '../state/playerStore';
 type Props = NativeStackScreenProps<RootStackParamList, 'Blitz'>;
 
 export const BLITZ_DURATION_SECONDS = 60;
+const FIRE_WINDOW_MS = 3500;
+const FIRE_THRESHOLD = 3;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,13 +50,33 @@ export default function BlitzScreen({ navigation }: Props) {
   const [resultVisible, setResultVisible] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
+  const [fireActive, setFireActive] = useState(false);
 
   const swapProgress = useRef(new Animated.Value(0)).current;
   const scoreRef = useRef(0);
+  const streakRef = useRef(0);
+  const lastMatchAtRef = useRef<number | null>(null);
+  const fireActiveRef = useRef(false);
 
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
+
+  useEffect(() => {
+    if (!started || finished) return;
+    const watchdog = setInterval(() => {
+      if (
+        fireActiveRef.current &&
+        lastMatchAtRef.current !== null &&
+        Date.now() - lastMatchAtRef.current > FIRE_WINDOW_MS
+      ) {
+        fireActiveRef.current = false;
+        streakRef.current = 0;
+        setFireActive(false);
+      }
+    }, 400);
+    return () => clearInterval(watchdog);
+  }, [started, finished]);
 
   useEffect(() => {
     if (!started || finished) return;
@@ -81,6 +104,10 @@ export default function BlitzScreen({ navigation }: Props) {
     setFallSeed((s) => s + 1);
     setResultVisible(false);
     setStarted(true);
+    streakRef.current = 0;
+    lastMatchAtRef.current = null;
+    fireActiveRef.current = false;
+    setFireActive(false);
   };
 
   const finishRun = () => {
@@ -105,9 +132,11 @@ export default function BlitzScreen({ navigation }: Props) {
       if (matches.length === 0) break;
 
       const clearedIds = new Set(matches.map(({ row, col }) => current[row][col]!.id));
-      const points = scoreForClear(matches.length);
+      const basePoints = scoreForClear(matches.length);
+      const points = fireActiveRef.current ? basePoints * 2 : basePoints;
       const combo = getComboMessage(matches.length, cascadeIndex, points);
-      setComboEvent({ id: Date.now() + cascadeIndex, label: combo.label, points: combo.points });
+      const label = fireActiveRef.current ? `${combo.label} 🔥x2`.trim() : combo.label;
+      setComboEvent({ id: Date.now() + cascadeIndex, label, points: combo.points });
       setPoppingIds(clearedIds);
       playSound(cascadeIndex > 0 ? 'combo' : 'pop');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -154,6 +183,18 @@ export default function BlitzScreen({ navigation }: Props) {
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const now = Date.now();
+    const withinWindow = lastMatchAtRef.current !== null && now - lastMatchAtRef.current <= FIRE_WINDOW_MS;
+    const newStreak = withinWindow ? streakRef.current + 1 : 1;
+    streakRef.current = newStreak;
+    lastMatchAtRef.current = now;
+    if (newStreak >= FIRE_THRESHOLD && !fireActiveRef.current) {
+      fireActiveRef.current = true;
+      setFireActive(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+
     setBusy(true);
     setSwapPair({ a: from, b: pos });
     swapProgress.setValue(0);
@@ -192,7 +233,8 @@ export default function BlitzScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <View style={styles.boardWrap}>
+      <View style={[styles.boardWrap, fireActive && styles.boardWrapOnFire]}>
+        <FireBanner active={fireActive} />
         <ComboPopup event={comboEvent} />
         <BoardView
           board={board}
@@ -277,6 +319,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  boardWrapOnFire: {
+    borderColor: '#FF7A1A',
   },
   startOverlay: {
     position: 'absolute',
