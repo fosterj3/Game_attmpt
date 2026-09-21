@@ -7,6 +7,8 @@ const STORAGE_KEY = 'match3.player.v1';
 export const MAX_LIVES = 5;
 export const LIFE_REGEN_MINUTES = 20;
 
+export type GameMode = 'arcade' | 'story';
+
 type LevelProgress = {
   bestStars: 0 | 1 | 2 | 3;
   bestScore: number;
@@ -23,15 +25,17 @@ type PlayerState = {
   unlockedLevelId: number;
   hasSeenHowToPlay: boolean;
   soundEnabled: boolean;
+  activeMode: GameMode | null;
 
   hydrate: () => Promise<void>;
   recordDailyPlay: () => void;
   spendLife: () => boolean;
   regenLivesIfDue: () => void;
-  completeLevel: (levelId: number, score: number, stars: 0 | 1 | 2 | 3) => void;
+  completeLevel: (levelId: number, score: number, stars: 0 | 1 | 2 | 3) => number;
   totalStars: () => number;
   markHowToPlaySeen: () => void;
   setSoundEnabled: (enabled: boolean) => void;
+  setMode: (mode: GameMode | null) => void;
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -45,6 +49,7 @@ async function persist(state: Partial<PlayerState>) {
     totalStars,
     markHowToPlaySeen,
     setSoundEnabled,
+    setMode,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -71,6 +76,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   unlockedLevelId: 1,
   hasSeenHowToPlay: false,
   soundEnabled: true,
+  activeMode: null,
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -155,6 +161,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     };
     set(next);
     persist({ ...get(), ...next });
+    return coinsEarned;
   },
 
   totalStars: () => {
@@ -169,5 +176,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setSoundEnabled: (enabled) => {
     set({ soundEnabled: enabled });
     persist({ ...get(), soundEnabled: enabled });
+  },
+
+  setMode: (mode) => {
+    set({ activeMode: mode });
+    persist({ ...get(), activeMode: mode });
   },
 }));

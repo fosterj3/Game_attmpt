@@ -5,6 +5,7 @@ import HowToPlayModal from '../components/HowToPlayModal';
 import LivesBadge from '../components/LivesBadge';
 import StreakBanner from '../components/StreakBanner';
 import { LEVELS } from '../data/levels';
+import { getChapter } from '../data/story';
 import { titleForStars } from '../data/titles';
 import { COLORS } from '../game/theme';
 import { RootStackParamList } from '../navigation/types';
@@ -20,8 +21,10 @@ export default function HomeScreen({ navigation }: Props) {
   const totalStars = usePlayerStore((s) => s.totalStars());
   const soundEnabled = usePlayerStore((s) => s.soundEnabled);
   const setSoundEnabled = usePlayerStore((s) => s.setSoundEnabled);
+  const activeMode = usePlayerStore((s) => s.activeMode);
   const title = titleForStars(totalStars);
   const [howToPlayVisible, setHowToPlayVisible] = useState(false);
+  const isStory = activeMode === 'story';
 
   return (
     <View style={styles.screen}>
@@ -33,6 +36,9 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.coinsChip}>
           <Text style={styles.coinsText}>{'🪙'} {coins}</Text>
         </View>
+        <Pressable onPress={() => navigation.navigate('ModeSelect')} style={styles.modeChip}>
+          <Text style={styles.modeChipText}>{isStory ? '📖 Story' : '⚡ Arcade'}</Text>
+        </Pressable>
         <Pressable onPress={() => setHowToPlayVisible(true)} style={styles.iconChip} hitSlop={8}>
           <Text style={styles.iconChipText}>{'?'}</Text>
         </Pressable>
@@ -49,10 +55,17 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.leaderboardLinkText}>{'🏅'} See how you rank among friends</Text>
         </Pressable>
 
-        <Text style={styles.mapTitle}>Level Map</Text>
+        <Text style={styles.mapTitle}>{isStory ? 'The Fading Prism' : 'Level Map'}</Text>
+        {isStory && (
+          <Text style={styles.storyIntro}>
+            Follow Lyra Quinn's journey to stop Kaelen the Unmaker before the kingdom's magic fades for good.
+          </Text>
+        )}
         {LEVELS.map((level) => {
           const locked = level.id > unlockedLevelId;
           const progress = levelProgress[level.id];
+          const chapter = getChapter(level.id);
+          const displayName = isStory && chapter ? chapter.title : `${level.id}. ${level.name}`;
           return (
             <Pressable
               key={level.id}
@@ -60,8 +73,8 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('Game', { levelId: level.id })}
               style={[styles.levelCard, locked && styles.levelCardLocked]}
             >
-              <View>
-                <Text style={styles.levelName}>{locked ? '🔒' : level.id}. {level.name}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.levelName}>{locked ? '🔒 ' : ''}{displayName}</Text>
                 <Text style={styles.levelGoal}>Target {level.targetScore} pts in {level.moveLimit} moves</Text>
               </View>
               <Text style={styles.levelStars}>
@@ -112,6 +125,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   coinsText: { color: COLORS.accent, fontWeight: '700' },
+  modeChip: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  modeChipText: { color: COLORS.text, fontWeight: '700', fontSize: 12 },
   iconChip: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -138,6 +158,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     marginTop: 8,
+  },
+  storyIntro: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -6,
+    marginBottom: 4,
   },
   levelCard: {
     backgroundColor: COLORS.surface,
