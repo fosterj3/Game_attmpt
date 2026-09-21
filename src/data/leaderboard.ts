@@ -1,23 +1,37 @@
 export type LeaderboardEntry = {
   id: string;
   name: string;
-  stars: number;
+  value: number;
   isPlayer?: boolean;
 };
 
-const FRIENDS: LeaderboardEntry[] = [
-  { id: 'f1', name: 'Maya', stars: 41 },
-  { id: 'f2', name: 'DeShawn', stars: 33 },
-  { id: 'f3', name: 'Priya', stars: 27 },
-  { id: 'f4', name: 'Oliver', stars: 19 },
-  { id: 'f5', name: 'Sana', stars: 12 },
-  { id: 'f6', name: 'Ben', stars: 6 },
+const STAR_FRIENDS: LeaderboardEntry[] = [
+  { id: 'f1', name: 'Maya', value: 41 },
+  { id: 'f2', name: 'DeShawn', value: 33 },
+  { id: 'f3', name: 'Priya', value: 27 },
+  { id: 'f4', name: 'Oliver', value: 19 },
+  { id: 'f5', name: 'Sana', value: 12 },
+  { id: 'f6', name: 'Ben', value: 6 },
+];
+
+const BLITZ_FRIENDS: LeaderboardEntry[] = [
+  { id: 'f1', name: 'Maya', value: 2140 },
+  { id: 'f2', name: 'DeShawn', value: 1875 },
+  { id: 'f3', name: 'Priya', value: 1530 },
+  { id: 'f4', name: 'Oliver', value: 1120 },
+  { id: 'f5', name: 'Sana', value: 740 },
+  { id: 'f6', name: 'Ben', value: 310 },
 ];
 
 export function buildLeaderboard(playerStars: number): LeaderboardEntry[] {
+  const entries: LeaderboardEntry[] = [...STAR_FRIENDS, { id: 'me', name: 'You', value: playerStars, isPlayer: true }];
+  return entries.sort((a, b) => b.value - a.value);
+}
+
+export function buildBlitzLeaderboard(playerBestScore: number): LeaderboardEntry[] {
   const entries: LeaderboardEntry[] = [
-    ...FRIENDS,
-    { id: 'me', name: 'You', stars: playerStars, isPlayer: true },
+    ...BLITZ_FRIENDS,
+    { id: 'me', name: 'You', value: playerBestScore, isPlayer: true },
   ];
-  return entries.sort((a, b) => b.stars - a.stars);
+  return entries.sort((a, b) => b.value - a.value);
 }

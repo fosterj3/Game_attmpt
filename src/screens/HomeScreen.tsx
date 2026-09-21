@@ -55,6 +55,16 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.leaderboardLinkText}>{'🏅'} See how you rank among friends</Text>
         </Pressable>
 
+        {!isStory && (
+          <Pressable style={styles.blitzCard} onPress={() => navigation.navigate('Blitz')}>
+            <Text style={styles.blitzEmoji}>{'⏱️'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.blitzTitle}>Blitz Mode</Text>
+              <Text style={styles.blitzBody}>60-second score attack - no moves limit, just chase a high score.</Text>
+            </View>
+          </Pressable>
+        )}
+
         <Text style={styles.mapTitle}>{isStory ? 'The Fading Prism' : 'Level Map'}</Text>
         {isStory && (
           <Text style={styles.storyIntro}>
@@ -75,7 +85,10 @@ export default function HomeScreen({ navigation }: Props) {
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.levelName}>{locked ? '🔒 ' : ''}{displayName}</Text>
-                <Text style={styles.levelGoal}>Target {level.targetScore} pts in {level.moveLimit} moves</Text>
+                <Text style={styles.levelGoal}>
+                  Target {level.targetScore} pts in {level.moveLimit} moves
+                  {level.timeLimitSeconds != null ? ` · ⏱ ${level.timeLimitSeconds}s` : ''}
+                </Text>
               </View>
               <Text style={styles.levelStars}>
                 {progress ? '⭐'.repeat(progress.bestStars) || '—' : locked ? '' : 'New'}
@@ -153,6 +166,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   leaderboardLinkText: { color: COLORS.text, fontWeight: '600' },
+  blitzCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
+  blitzEmoji: { fontSize: 26 },
+  blitzTitle: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
+  blitzBody: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
   mapTitle: {
     color: COLORS.text,
     fontSize: 20,

@@ -1,0 +1,302 @@
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import BlitzResultModal from '../components/BlitzResultModal';
+import BoardView from '../components/BoardView';
+import ComboPopup, { ComboEvent } from '../components/ComboPopup';
+import {
+  clearMatches,
+  collapseColumns,
+  findMatchedPositions,
+  generateBoard,
+  hasAnyValidMove,
+  scoreForClear,
+  trySwap,
+} from '../game/board';
+import { getComboMessage } from '../game/combo';
+import { playSound } from '../game/sound';
+import { COLORS } from '../game/theme';
+import { Board, Position } from '../game/types';
+import { RootStackParamList } from '../navigation/types';
+import { usePlayerStore } from '../state/playerStore';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Blitz'>;
+
+export const BLITZ_DURATION_SECONDS = 60;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export default function BlitzScreen({ navigation }: Props) {
+  const blitzBestScore = usePlayerStore((s) => s.blitzBestScore);
+  const submitBlitzScore = usePlayerStore((s) => s.submitBlitzScore);
+
+  const [board, setBoard] = useState<Board>(() => generateBoard());
+  const [selected, setSelected] = useState<Position | null>(null);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(BLITZ_DURATION_SECONDS);
+  const [started, setStarted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [poppingIds, setPoppingIds] = useState<Set<number>>(new Set());
+  const [fallSeed, setFallSeed] = useState(0);
+  const [swapPair, setSwapPair] = useState<{ a: Position; b: Position } | null>(null);
+  const [comboEvent, setComboEvent] = useState<ComboEvent | null>(null);
+  const [resultVisible, setResultVisible] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
+  const [isNewBest, setIsNewBest] = useState(false);
+
+  const swapProgress = useRef(new Animated.Value(0)).current;
+  const scoreRef = useRef(0);
+
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
+
+  useEffect(() => {
+    if (!started || finished) return;
+    const interval = setInterval(() => {
+      setTimeLeft((t) => Math.max(0, t - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [started, finished]);
+
+  useEffect(() => {
+    if (started && !finished && timeLeft === 0) {
+      finishRun();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
+
+  const startRun = () => {
+    setBoard(generateBoard());
+    setScore(0);
+    scoreRef.current = 0;
+    setTimeLeft(BLITZ_DURATION_SECONDS);
+    setFinished(false);
+    setSelected(null);
+    setPoppingIds(new Set());
+    setFallSeed((s) => s + 1);
+    setResultVisible(false);
+    setStarted(true);
+  };
+
+  const finishRun = () => {
+    if (finished) return;
+    setFinished(true);
+    const total = scoreRef.current;
+    setFinalScore(total);
+    const newBest = submitBlitzScore(total);
+    setIsNewBest(newBest);
+    playSound(newBest ? 'win' : 'lose');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setResultVisible(true);
+  };
+
+  const runCascades = async (startingBoard: Board) => {
+    let current = startingBoard;
+    let runningScore = score;
+    let cascadeIndex = 0;
+
+    while (true) {
+      const matches = findMatchedPositions(current);
+      if (matches.length === 0) break;
+
+      const clearedIds = new Set(matches.map(({ row, col }) => current[row][col]!.id));
+      const points = scoreForClear(matches.length);
+      const combo = getComboMessage(matches.length, cascadeIndex, points);
+      setComboEvent({ id: Date.now() + cascadeIndex, label: combo.label, points: combo.points });
+      setPoppingIds(clearedIds);
+      playSound(cascadeIndex > 0 ? 'combo' : 'pop');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await delay(150);
+
+      current = collapseColumns(clearMatches(current, matches));
+      runningScore += points;
+      cascadeIndex += 1;
+
+      setBoard(current);
+      setScore(runningScore);
+      setPoppingIds(new Set());
+      setFallSeed((s) => s + 1);
+      await delay(180);
+    }
+
+    setBusy(false);
+
+    if (!hasAnyValidMove(current)) {
+      setBoard(generateBoard());
+      setFallSeed((s) => s + 1);
+    }
+  };
+
+  const onTilePress = (pos: Position) => {
+    if (!started || busy || finished) return;
+    if (!selected) {
+      setSelected(pos);
+      playSound('tap');
+      return;
+    }
+    if (selected.row === pos.row && selected.col === pos.col) {
+      setSelected(null);
+      return;
+    }
+    const from = selected;
+    const { board: nextBoard, valid } = trySwap(board, from, pos);
+    setSelected(null);
+
+    if (!valid) {
+      playSound('invalid');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setBusy(true);
+    setSwapPair({ a: from, b: pos });
+    swapProgress.setValue(0);
+    Animated.timing(swapProgress, { toValue: 1, duration: 130, useNativeDriver: true }).start(() => {
+      setSwapPair(null);
+      swapProgress.setValue(0);
+      setBoard(nextBoard);
+      runCascades(nextBoard);
+    });
+  };
+
+  const timeLow = timeLeft <= 10;
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.iconButton} hitSlop={12}>
+          <Text style={styles.iconButtonText}>{'←'}</Text>
+        </Pressable>
+        <Text style={styles.title}>{'⏱ Blitz'}</Text>
+        <View style={styles.iconButton} />
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statBadge}>
+          <Text style={styles.statBadgeLabel}>Score</Text>
+          <Text style={styles.statBadgeValue}>{score}</Text>
+        </View>
+        <View style={[styles.statBadge, timeLow && styles.statBadgeDanger]}>
+          <Text style={styles.statBadgeLabel}>Time left</Text>
+          <Text style={[styles.statBadgeValue, timeLow && styles.statBadgeValueDanger]}>{timeLeft}s</Text>
+        </View>
+        <View style={styles.statBadge}>
+          <Text style={styles.statBadgeLabel}>Best</Text>
+          <Text style={styles.statBadgeValue}>{blitzBestScore}</Text>
+        </View>
+      </View>
+
+      <View style={styles.boardWrap}>
+        <ComboPopup event={comboEvent} />
+        <BoardView
+          board={board}
+          selected={selected}
+          onTilePress={onTilePress}
+          poppingIds={poppingIds}
+          fallSeed={fallSeed}
+          swap={swapPair ? { a: swapPair.a, b: swapPair.b, progress: swapProgress } : null}
+        />
+
+        {!started && (
+          <View style={styles.startOverlay}>
+            <Text style={styles.startTitle}>Blitz Mode</Text>
+            <Text style={styles.startBody}>
+              {BLITZ_DURATION_SECONDS} seconds. No moves limit, no target - just chase the highest score you can and
+              see how you stack up against your friends.
+            </Text>
+            <Pressable style={styles.startButton} onPress={startRun}>
+              <Text style={styles.startButtonText}>Start</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+
+      <BlitzResultModal
+        visible={resultVisible}
+        score={finalScore}
+        bestScore={Math.max(finalScore, blitzBestScore)}
+        isNewBest={isNewBest}
+        onPlayAgain={startRun}
+        onDone={() => navigation.goBack()}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    paddingTop: 56,
+    paddingHorizontal: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconButton: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButtonText: { color: COLORS.text, fontSize: 16, fontWeight: '800' },
+  title: { color: COLORS.text, fontSize: 18, fontWeight: '800', flex: 1, textAlign: 'center' },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  statBadge: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  statBadgeDanger: {
+    backgroundColor: 'rgba(255,94,91,0.18)',
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+  },
+  statBadgeLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
+  statBadgeValue: { color: COLORS.text, fontSize: 20, fontWeight: '800', marginTop: 2 },
+  statBadgeValueDanger: { color: COLORS.danger },
+  boardWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  startOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(18,20,43,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 14,
+  },
+  startTitle: { color: COLORS.text, fontSize: 26, fontWeight: '800' },
+  startBody: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  startButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+  },
+  startButtonText: { color: COLORS.text, fontWeight: '800', fontSize: 16 },
+});

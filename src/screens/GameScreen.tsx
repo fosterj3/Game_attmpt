@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import BoardView from '../components/BoardView';
+import ComboPopup, { ComboEvent } from '../components/ComboPopup';
 import DialogueModal from '../components/DialogueModal';
 import HowToPlayModal from '../components/HowToPlayModal';
 import InfoModal from '../components/InfoModal';
@@ -18,6 +19,7 @@ import {
   scoreForClear,
   trySwap,
 } from '../game/board';
+import { getComboMessage } from '../game/combo';
 import { playSound } from '../game/sound';
 import { COLORS } from '../game/theme';
 import { Board, Position } from '../game/types';
@@ -32,6 +34,12 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export default function GameScreen({ route, navigation }: Props) {
   const { levelId } = route.params;
   const level = getLevel(levelId)!;
@@ -42,16 +50,19 @@ export default function GameScreen({ route, navigation }: Props) {
   const markHowToPlaySeen = usePlayerStore((s) => s.markHowToPlaySeen);
   const activeMode = usePlayerStore((s) => s.activeMode);
   const isStory = activeMode === 'story' && !!chapter;
+  const hasTimer = level.timeLimitSeconds != null;
 
   const [board, setBoard] = useState<Board>(() => generateBoard());
   const [selected, setSelected] = useState<Position | null>(null);
   const [score, setScore] = useState(0);
   const [movesLeft, setMovesLeft] = useState(level.moveLimit);
+  const [timeLeft, setTimeLeft] = useState<number | null>(level.timeLimitSeconds ?? null);
   const [busy, setBusy] = useState(false);
   const [finished, setFinished] = useState(false);
   const [poppingIds, setPoppingIds] = useState<Set<number>>(new Set());
   const [fallSeed, setFallSeed] = useState(0);
   const [swapPair, setSwapPair] = useState<{ a: Position; b: Position } | null>(null);
+  const [comboEvent, setComboEvent] = useState<ComboEvent | null>(null);
   const [howToPlayVisible, setHowToPlayVisible] = useState(!hasSeenHowToPlay && !isStory);
   const [storyPhase, setStoryPhase] = useState<StoryPhase>(isStory ? 'before' : 'playing');
   const [outOfLivesVisible, setOutOfLivesVisible] = useState(false);
@@ -64,6 +75,11 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const swapProgress = useRef(new Animated.Value(0)).current;
   const attemptStartedRef = useRef(false);
+  const scoreRef = useRef(0);
+
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
 
   const startAttempt = (): boolean => {
     const ok = spendLife();
@@ -73,7 +89,9 @@ export default function GameScreen({ route, navigation }: Props) {
     }
     setBoard(generateBoard());
     setScore(0);
+    scoreRef.current = 0;
     setMovesLeft(level.moveLimit);
+    setTimeLeft(level.timeLimitSeconds ?? null);
     setFinished(false);
     setSelected(null);
     setPoppingIds(new Set());
@@ -88,6 +106,23 @@ export default function GameScreen({ route, navigation }: Props) {
     startAttempt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const isPaused = storyPhase !== 'playing' || howToPlayVisible || outOfLivesVisible || !!result;
+
+  useEffect(() => {
+    if (!hasTimer || isPaused || finished) return;
+    const interval = setInterval(() => {
+      setTimeLeft((t) => (t === null ? t : Math.max(0, t - 1)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [hasTimer, isPaused, finished]);
+
+  useEffect(() => {
+    if (hasTimer && timeLeft === 0 && !finished) {
+      finishLevel(scoreRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
 
   const closeHowToPlay = () => {
     setHowToPlayVisible(false);
@@ -142,13 +177,16 @@ export default function GameScreen({ route, navigation }: Props) {
       if (matches.length === 0) break;
 
       const clearedIds = new Set(matches.map(({ row, col }) => current[row][col]!.id));
+      const points = scoreForClear(matches.length);
+      const combo = getComboMessage(matches.length, cascadeIndex, points);
+      setComboEvent({ id: Date.now() + cascadeIndex, label: combo.label, points: combo.points });
       setPoppingIds(clearedIds);
       playSound(cascadeIndex > 0 ? 'combo' : 'pop');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await delay(180);
 
       current = collapseColumns(clearMatches(current, matches));
-      runningScore += scoreForClear(matches.length);
+      runningScore += points;
       cascadeIndex += 1;
 
       setBoard(current);
@@ -211,6 +249,8 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const progressPct = Math.min(100, Math.round((score / level.targetScore) * 100));
   const headerTitle = isStory && chapter ? chapter.title : level.name;
+  const movesLow = movesLeft <= 3;
+  const timeLow = hasTimer && (timeLeft ?? 0) <= 10;
 
   return (
     <View style={styles.screen}>
@@ -221,12 +261,24 @@ export default function GameScreen({ route, navigation }: Props) {
         <Text style={styles.levelName} numberOfLines={1}>
           {headerTitle}
         </Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable onPress={() => setHowToPlayVisible(true)} style={styles.iconButton} hitSlop={12}>
-            <Text style={styles.iconButtonText}>{'?'}</Text>
-          </Pressable>
-          <Text style={styles.moves}>Moves: {movesLeft}</Text>
+        <Pressable onPress={() => setHowToPlayVisible(true)} style={styles.iconButton} hitSlop={12}>
+          <Text style={styles.iconButtonText}>{'?'}</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={[styles.statBadge, movesLow && styles.statBadgeDanger]}>
+          <Text style={styles.statBadgeLabel}>Moves left</Text>
+          <Text style={[styles.statBadgeValue, movesLow && styles.statBadgeValueDanger]}>{movesLeft}</Text>
         </View>
+        {hasTimer && (
+          <View style={[styles.statBadge, timeLow && styles.statBadgeDanger]}>
+            <Text style={styles.statBadgeLabel}>{'⏱ Time left'}</Text>
+            <Text style={[styles.statBadgeValue, timeLow && styles.statBadgeValueDanger]}>
+              {formatTime(timeLeft ?? 0)}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.progressTrack}>
@@ -235,6 +287,7 @@ export default function GameScreen({ route, navigation }: Props) {
       <Text style={styles.scoreText}>{score} / {level.targetScore} pts</Text>
 
       <View style={styles.boardWrap}>
+        <ComboPopup event={comboEvent} />
         <BoardView
           board={board}
           selected={selected}
@@ -308,7 +361,26 @@ const styles = StyleSheet.create({
   },
   iconButtonText: { color: COLORS.text, fontSize: 16, fontWeight: '800' },
   levelName: { color: COLORS.text, fontSize: 18, fontWeight: '800', flex: 1, textAlign: 'center' },
-  moves: { color: COLORS.textMuted, fontWeight: '600', alignSelf: 'center' },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  statBadge: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  statBadgeDanger: {
+    backgroundColor: 'rgba(255,94,91,0.18)',
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+  },
+  statBadgeLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
+  statBadgeValue: { color: COLORS.text, fontSize: 20, fontWeight: '800', marginTop: 2 },
+  statBadgeValueDanger: { color: COLORS.danger },
   progressTrack: {
     height: 10,
     backgroundColor: COLORS.surface,

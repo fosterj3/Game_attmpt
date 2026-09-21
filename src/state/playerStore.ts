@@ -26,6 +26,7 @@ type PlayerState = {
   hasSeenHowToPlay: boolean;
   soundEnabled: boolean;
   activeMode: GameMode | null;
+  blitzBestScore: number;
 
   hydrate: () => Promise<void>;
   recordDailyPlay: () => void;
@@ -36,6 +37,7 @@ type PlayerState = {
   markHowToPlaySeen: () => void;
   setSoundEnabled: (enabled: boolean) => void;
   setMode: (mode: GameMode | null) => void;
+  submitBlitzScore: (score: number) => boolean;
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -50,6 +52,7 @@ async function persist(state: Partial<PlayerState>) {
     markHowToPlaySeen,
     setSoundEnabled,
     setMode,
+    submitBlitzScore,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -77,6 +80,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   hasSeenHowToPlay: false,
   soundEnabled: true,
   activeMode: null,
+  blitzBestScore: 0,
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -181,5 +185,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setMode: (mode) => {
     set({ activeMode: mode });
     persist({ ...get(), activeMode: mode });
+  },
+
+  submitBlitzScore: (score) => {
+    const { blitzBestScore } = get();
+    const isNewBest = score > blitzBestScore;
+    if (isNewBest) {
+      set({ blitzBestScore: score });
+      persist({ ...get(), blitzBestScore: score });
+    }
+    return isNewBest;
   },
 }));

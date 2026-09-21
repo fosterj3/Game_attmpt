@@ -13,6 +13,7 @@ export type Position = { row: number; col: number };
 export type LevelGoal = {
   targetScore: number;
   moveLimit: number;
+  timeLimitSeconds?: number;
 };
 
 export type LevelResult = {
