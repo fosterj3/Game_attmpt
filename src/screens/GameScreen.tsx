@@ -80,6 +80,7 @@ export default function GameScreen({ route, navigation }: Props) {
     score: number;
     stars: 0 | 1 | 2 | 3;
     coinsEarned: number;
+    moveBonusCoins: number;
     wagerResult: { heartsDelta: number; coinsBonus: number } | null;
   } | null>(null);
 
@@ -157,18 +158,18 @@ export default function GameScreen({ route, navigation }: Props) {
     navigation.goBack();
   };
 
-  const finishLevel = (finalScore: number) => {
+  const finishLevel = (finalScore: number, movesRemaining: number = movesLeft) => {
     if (finished) return;
     setFinished(true);
     const stars = starsForScore(finalScore, level);
-    const coinsEarned = completeLevel(level.id, finalScore, stars);
+    const { coinsEarned, bonusCoins } = completeLevel(level.id, finalScore, stars, movesRemaining);
     const won = stars > 0;
     playSound(won ? 'win' : 'lose');
     Haptics.notificationAsync(
       won ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
     );
     const wagerResult = isStory && wagerAccepted ? resolveWager(won) : null;
-    setResult({ won, score: finalScore, stars, coinsEarned, wagerResult });
+    setResult({ won, score: finalScore, stars, coinsEarned, moveBonusCoins: bonusCoins, wagerResult });
   };
 
   const handleResultContinue = () => {
@@ -217,11 +218,11 @@ export default function GameScreen({ route, navigation }: Props) {
     setBusy(false);
 
     if (runningScore >= level.targetScore) {
-      finishLevel(runningScore);
+      finishLevel(runningScore, movesRemaining);
       return;
     }
     if (movesRemaining <= 0) {
-      finishLevel(runningScore);
+      finishLevel(runningScore, movesRemaining);
       return;
     }
     if (!hasAnyValidMove(current)) {
@@ -405,6 +406,7 @@ export default function GameScreen({ route, navigation }: Props) {
           target={level.targetScore}
           stars={result.stars}
           coinsEarned={result.coinsEarned}
+          moveBonusCoins={result.moveBonusCoins}
           wagerResult={result.wagerResult}
           onContinue={handleResultContinue}
           onRetry={handleRetry}

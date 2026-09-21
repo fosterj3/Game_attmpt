@@ -7,6 +7,8 @@ const sources = {
   combo: require('../../assets/sounds/combo.wav'),
   win: require('../../assets/sounds/win.wav'),
   lose: require('../../assets/sounds/lose.wav'),
+  fire: require('../../assets/sounds/fire.wav'),
+  newbest: require('../../assets/sounds/newbest.wav'),
 } as const;
 
 export type SoundName = keyof typeof sources;

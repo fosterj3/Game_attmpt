@@ -6,7 +6,7 @@ export type Title = {
 
 export const TITLES: Title[] = [
   { minStars: 0, name: 'Newcomer', emoji: '🌱' },
-  { minStars: 10, name: 'Rising Star', emoji: '⭐' },
+  { minStars: 1, name: 'Rising Star', emoji: '⭐' },
   { minStars: 25, name: 'Board Master', emoji: '🏆' },
   { minStars: 50, name: 'Cascade Legend', emoji: '👑' },
   { minStars: 100, name: 'Grandmaster', emoji: '💎' },

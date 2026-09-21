@@ -1,5 +1,5 @@
-import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../game/theme';
 
 type Props = {
@@ -11,15 +11,56 @@ type Props = {
   onDone: () => void;
 };
 
+const SPARKLES = ['✨', '⭐', '✨', '🎉', '✨', '⭐'];
+
 export default function BlitzResultModal({ visible, score, bestScore, isNewBest, onPlayAgain, onDone }: Props) {
+  const trophyBounce = useRef(new Animated.Value(0)).current;
+  const glow = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible || !isNewBest) return;
+    trophyBounce.setValue(0);
+    Animated.sequence([
+      Animated.spring(trophyBounce, { toValue: 1, useNativeDriver: true, friction: 4, tension: 80 }),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(trophyBounce, { toValue: 1.15, duration: 500, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(trophyBounce, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
+      ),
+    ]).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glow, { toValue: 1, duration: 700, useNativeDriver: false, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(glow, { toValue: 0, duration: 700, useNativeDriver: false, easing: Easing.inOut(Easing.ease) }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [visible, isNewBest, trophyBounce, glow]);
+
+  const borderColor = glow.interpolate({ inputRange: [0, 1], outputRange: [COLORS.accent, '#FFE066'] });
+
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onDone}>
       <View style={styles.overlay}>
-        <View style={[styles.card, isNewBest && styles.cardBest]}>
-          <Text style={styles.badge}>{isNewBest ? '🏆' : '⏱️'}</Text>
+        <Animated.View style={[styles.card, isNewBest && [styles.cardBest, { borderColor }]]}>
+          {isNewBest && (
+            <View style={styles.sparkleRow} pointerEvents="none">
+              {SPARKLES.map((s, i) => (
+                <Text key={i} style={styles.sparkle}>
+                  {s}
+                </Text>
+              ))}
+            </View>
+          )}
+          <Animated.Text style={[styles.badge, isNewBest && { transform: [{ scale: trophyBounce }] }]}>
+            {isNewBest ? '🏆' : '⏱️'}
+          </Animated.Text>
           <Text style={styles.title}>{"Time's Up!"}</Text>
-          {isNewBest && <Text style={styles.newBest}>New Best Score!</Text>}
-          <Text style={styles.scoreText}>{score} pts</Text>
+          {isNewBest && <Text style={styles.newBest}>{'🎉 NEW BEST SCORE! 🎉'}</Text>}
+          <Text style={[styles.scoreText, isNewBest && styles.scoreTextBest]}>{score} pts</Text>
           <Text style={styles.bestText}>Best: {bestScore} pts</Text>
 
           <View style={styles.buttonRow}>
@@ -30,7 +71,7 @@ export default function BlitzResultModal({ visible, score, bestScore, isNewBest,
               <Text style={styles.buttonText}>Play Again</Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -52,11 +93,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  cardBest: { borderColor: COLORS.accent },
-  badge: { fontSize: 48 },
+  cardBest: { borderWidth: 3 },
+  sparkleRow: {
+    position: 'absolute',
+    top: -14,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  sparkle: { fontSize: 20 },
+  badge: { fontSize: 52 },
   title: { color: COLORS.text, fontSize: 24, fontWeight: '800', marginTop: 4 },
-  newBest: { color: COLORS.accent, fontWeight: '800', fontSize: 15, marginTop: 4 },
+  newBest: { color: '#FFE066', fontWeight: '800', fontSize: 16, marginTop: 4 },
   scoreText: { color: COLORS.text, fontSize: 28, fontWeight: '800', marginTop: 10 },
+  scoreTextBest: { color: '#FFE066', fontSize: 34 },
   bestText: { color: COLORS.textMuted, fontSize: 13, marginTop: 2 },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 18, width: '100%' },
   button: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(gh auth *)",
       "Bash(git clone *)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081/index.ts.bundle?platform=web --max-time 3)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081/index.ts.bundle?platform=web --max-time 3)",
+      "Bash(curl -s \"https://cascade-quest.expo.app/?cachebust=$\\(date +%s\\)\" -H \"Cache-Control: no-cache\" --max-time 15)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

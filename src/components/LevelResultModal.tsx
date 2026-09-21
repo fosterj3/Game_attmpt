@@ -14,6 +14,7 @@ type Props = {
   target: number;
   stars: 0 | 1 | 2 | 3;
   coinsEarned: number;
+  moveBonusCoins?: number;
   wagerResult?: WagerResult | null;
   onContinue: () => void;
   onRetry: () => void;
@@ -26,6 +27,7 @@ export default function LevelResultModal({
   target,
   stars,
   coinsEarned,
+  moveBonusCoins = 0,
   wagerResult,
   onContinue,
   onRetry,
@@ -49,7 +51,12 @@ export default function LevelResultModal({
             {score} / {target} pts
           </Text>
 
-          {won && coinsEarned > 0 && <Text style={styles.coinsText}>{'🪙'} +{coinsEarned}</Text>}
+          {won && coinsEarned > 0 && (
+            <Text style={styles.coinsText}>
+              {'🪙'} +{coinsEarned}
+              {moveBonusCoins > 0 ? ` (incl. +${moveBonusCoins} leftover-move bonus)` : ''}
+            </Text>
+          )}
           {!won && (
             <Text style={styles.hintText}>You reached {Math.round((score / target) * 100)}% of the target — so close!</Text>
           )}

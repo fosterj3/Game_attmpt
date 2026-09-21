@@ -116,4 +116,26 @@ writeWav(
   tone(320, 120, 0.45, { wave: 'triangle', attack: 0.02, decayPow: 1.2, volume: 0.35 })
 );
 
+// --- fire: dramatic ignition whoosh + sting for Blitz "On Fire" ---
+writeWav(
+  'fire.wav',
+  concat(
+    tone(160, 950, 0.32, { wave: 'triangle', attack: 0.04, decayPow: 1, volume: 0.5 }),
+    tone(1300, 1300, 0.05, { attack: 0.005, decayPow: 2, volume: 0.55 }),
+    tone(1000, 1000, 0.05, { attack: 0.005, decayPow: 2, volume: 0.5 }),
+    tone(1500, 1500, 0.18, { attack: 0.005, decayPow: 1.6, volume: 0.6 })
+  )
+);
+
+// --- newbest: extra-grand fanfare for a new Blitz high score ---
+writeWav(
+  'newbest.wav',
+  concat(
+    tone(523.25, 523.25, 0.1, { attack: 0.005, decayPow: 2, volume: 0.4 }),
+    tone(659.25, 659.25, 0.1, { attack: 0.005, decayPow: 2, volume: 0.42 }),
+    tone(783.99, 783.99, 0.1, { attack: 0.005, decayPow: 2, volume: 0.45 }),
+    tone(1046.5, 1046.5, 0.3, { attack: 0.005, decayPow: 1.3, volume: 0.55 })
+  )
+);
+
 console.log('Done.');

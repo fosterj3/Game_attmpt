@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { LEVELS } from '../data/levels';
+import { LEVELS, getLevel } from '../data/levels';
 import { BoostId, getBoost } from '../data/shop';
 
 const STORAGE_KEY = 'match3.player.v1';
@@ -9,6 +9,7 @@ export const MAX_LIVES = 5;
 export const LIFE_REGEN_MINUTES = 20;
 export const WAGER_HEARTS = 2;
 export const WAGER_OVERFLOW_COIN_RATE = 15;
+export const COINS_PER_LEFTOVER_MOVE = 10;
 
 export type GameMode = 'arcade' | 'story';
 
@@ -36,7 +37,12 @@ type PlayerState = {
   recordDailyPlay: () => void;
   spendLife: () => boolean;
   regenLivesIfDue: () => void;
-  completeLevel: (levelId: number, score: number, stars: 0 | 1 | 2 | 3) => number;
+  completeLevel: (
+    levelId: number,
+    score: number,
+    stars: 0 | 1 | 2 | 3,
+    movesRemaining?: number
+  ) => { coinsEarned: number; bonusCoins: number };
   totalStars: () => number;
   markHowToPlaySeen: () => void;
   setSoundEnabled: (enabled: boolean) => void;
@@ -149,7 +155,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return true;
   },
 
-  completeLevel: (levelId, score, stars) => {
+  completeLevel: (levelId, score, stars, movesRemaining = 0) => {
     const { levelProgress, unlockedLevelId, coins } = get();
     const existing = levelProgress[levelId];
     const improved = !existing || stars > existing.bestStars || score > existing.bestScore;
@@ -168,7 +174,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         ? unlockedLevelId + 1
         : unlockedLevelId;
 
-    const coinsEarned = stars * 25;
+    const bonusCoins = stars > 0 ? movesRemaining * COINS_PER_LEFTOVER_MOVE : 0;
+    const coinsEarned = stars * 25 + bonusCoins;
     const next = {
       levelProgress: newProgress,
       unlockedLevelId: nextUnlocked,
@@ -176,11 +183,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     };
     set(next);
     persist({ ...get(), ...next });
-    return coinsEarned;
+    return { coinsEarned, bonusCoins };
   },
 
   totalStars: () => {
-    return Object.values(get().levelProgress).reduce((sum, p) => sum + p.bestStars, 0);
+    // Career/title stars: awarded once per level on first completion (any
+    // win), scaled by difficulty - decoupled from the 0-3 in-level star
+    // rating (which still only affects the coin bonus for that attempt).
+    return Object.entries(get().levelProgress).reduce((sum, [id, p]) => {
+      if (p.bestStars <= 0) return sum;
+      const level = getLevel(Number(id));
+      return sum + (level?.titleStars ?? 0);
+    }, 0);
   },
 
   markHowToPlaySeen: () => {

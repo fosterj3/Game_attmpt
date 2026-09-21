@@ -6,6 +6,7 @@ import BlitzResultModal from '../components/BlitzResultModal';
 import BoardView from '../components/BoardView';
 import ComboPopup, { ComboEvent } from '../components/ComboPopup';
 import FireBanner from '../components/FireBanner';
+import FireIgniteOverlay from '../components/FireIgniteOverlay';
 import {
   clearMatches,
   collapseColumns,
@@ -25,8 +26,9 @@ import { usePlayerStore } from '../state/playerStore';
 type Props = NativeStackScreenProps<RootStackParamList, 'Blitz'>;
 
 export const BLITZ_DURATION_SECONDS = 60;
-const FIRE_WINDOW_MS = 3500;
-const FIRE_THRESHOLD = 3;
+const FIRE_WINDOW_MS = 2200;
+const FIRE_THRESHOLD = 5;
+const IGNITE_PAUSE_MS = 1300;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -51,6 +53,7 @@ export default function BlitzScreen({ navigation }: Props) {
   const [finalScore, setFinalScore] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [fireActive, setFireActive] = useState(false);
+  const [igniting, setIgniting] = useState(false);
 
   const swapProgress = useRef(new Animated.Value(0)).current;
   const scoreRef = useRef(0);
@@ -79,12 +82,12 @@ export default function BlitzScreen({ navigation }: Props) {
   }, [started, finished]);
 
   useEffect(() => {
-    if (!started || finished) return;
+    if (!started || finished || igniting) return;
     const interval = setInterval(() => {
       setTimeLeft((t) => Math.max(0, t - 1));
     }, 1000);
     return () => clearInterval(interval);
-  }, [started, finished]);
+  }, [started, finished, igniting]);
 
   useEffect(() => {
     if (started && !finished && timeLeft === 0) {
@@ -108,6 +111,7 @@ export default function BlitzScreen({ navigation }: Props) {
     lastMatchAtRef.current = null;
     fireActiveRef.current = false;
     setFireActive(false);
+    setIgniting(false);
   };
 
   const finishRun = () => {
@@ -117,7 +121,7 @@ export default function BlitzScreen({ navigation }: Props) {
     setFinalScore(total);
     const newBest = submitBlitzScore(total);
     setIsNewBest(newBest);
-    playSound(newBest ? 'win' : 'lose');
+    playSound(newBest ? 'newbest' : 'lose');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setResultVisible(true);
   };
@@ -162,7 +166,7 @@ export default function BlitzScreen({ navigation }: Props) {
   };
 
   const onTilePress = (pos: Position) => {
-    if (!started || busy || finished) return;
+    if (!started || busy || finished || igniting) return;
     if (!selected) {
       setSelected(pos);
       playSound('tap');
@@ -189,19 +193,28 @@ export default function BlitzScreen({ navigation }: Props) {
     const newStreak = withinWindow ? streakRef.current + 1 : 1;
     streakRef.current = newStreak;
     lastMatchAtRef.current = now;
-    if (newStreak >= FIRE_THRESHOLD && !fireActiveRef.current) {
+    const justIgnited = newStreak >= FIRE_THRESHOLD && !fireActiveRef.current;
+    if (justIgnited) {
       fireActiveRef.current = true;
       setFireActive(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
 
     setBusy(true);
     setSwapPair({ a: from, b: pos });
     swapProgress.setValue(0);
-    Animated.timing(swapProgress, { toValue: 1, duration: 130, useNativeDriver: true }).start(() => {
+    Animated.timing(swapProgress, { toValue: 1, duration: 130, useNativeDriver: true }).start(async () => {
       setSwapPair(null);
       swapProgress.setValue(0);
       setBoard(nextBoard);
+
+      if (justIgnited) {
+        setIgniting(true);
+        playSound('fire');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        await delay(IGNITE_PAUSE_MS);
+        setIgniting(false);
+      }
+
       runCascades(nextBoard);
     });
   };
@@ -235,6 +248,7 @@ export default function BlitzScreen({ navigation }: Props) {
 
       <View style={[styles.boardWrap, fireActive && styles.boardWrapOnFire]}>
         <FireBanner active={fireActive} />
+        <FireIgniteOverlay visible={igniting} />
         <ComboPopup event={comboEvent} />
         <BoardView
           board={board}
