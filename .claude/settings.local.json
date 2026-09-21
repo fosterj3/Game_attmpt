@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(gh auth *)",
-      "Bash(git clone *)"
+      "Bash(git clone *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081/index.ts.bundle?platform=web --max-time 3)"
     ]
   }
 }

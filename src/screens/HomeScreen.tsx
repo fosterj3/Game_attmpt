@@ -68,7 +68,8 @@ export default function HomeScreen({ navigation }: Props) {
         <Text style={styles.mapTitle}>{isStory ? 'The Fading Prism' : 'Level Map'}</Text>
         {isStory && (
           <Text style={styles.storyIntro}>
-            Follow Lyra Quinn's journey to stop Kaelen the Unmaker before the kingdom's magic fades for good.
+            Follow Lyra Quinn's journey to stop Kaelen the Unmaker before the kingdom's magic fades for good. Every
+            chapter, he'll offer a wager: risk 2 hearts for a chance to win 2 more.
           </Text>
         )}
         {LEVELS.map((level) => {

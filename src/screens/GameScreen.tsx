@@ -8,6 +8,7 @@ import DialogueModal from '../components/DialogueModal';
 import HowToPlayModal from '../components/HowToPlayModal';
 import InfoModal from '../components/InfoModal';
 import LevelResultModal from '../components/LevelResultModal';
+import WagerModal from '../components/WagerModal';
 import { getLevel, starsForScore } from '../data/levels';
 import { getChapter } from '../data/story';
 import {
@@ -28,7 +29,7 @@ import { usePlayerStore } from '../state/playerStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
-type StoryPhase = 'before' | 'playing' | 'after' | null;
+type StoryPhase = 'before' | 'wager' | 'playing' | 'after' | null;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -49,6 +50,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const hasSeenHowToPlay = usePlayerStore((s) => s.hasSeenHowToPlay);
   const markHowToPlaySeen = usePlayerStore((s) => s.markHowToPlaySeen);
   const activeMode = usePlayerStore((s) => s.activeMode);
+  const lives = usePlayerStore((s) => s.lives);
+  const resolveWager = usePlayerStore((s) => s.resolveWager);
   const isStory = activeMode === 'story' && !!chapter;
   const hasTimer = level.timeLimitSeconds != null;
 
@@ -66,11 +69,13 @@ export default function GameScreen({ route, navigation }: Props) {
   const [howToPlayVisible, setHowToPlayVisible] = useState(!hasSeenHowToPlay && !isStory);
   const [storyPhase, setStoryPhase] = useState<StoryPhase>(isStory ? 'before' : 'playing');
   const [outOfLivesVisible, setOutOfLivesVisible] = useState(false);
+  const [wagerAccepted, setWagerAccepted] = useState(false);
   const [result, setResult] = useState<{
     won: boolean;
     score: number;
     stars: 0 | 1 | 2 | 3;
     coinsEarned: number;
+    wagerResult: { heartsDelta: number; coinsBonus: number } | null;
   } | null>(null);
 
   const swapProgress = useRef(new Animated.Value(0)).current;
@@ -130,6 +135,11 @@ export default function GameScreen({ route, navigation }: Props) {
   };
 
   const handleBeforeDialogueDone = () => {
+    setStoryPhase('wager');
+  };
+
+  const handleWagerChoice = (accept: boolean) => {
+    setWagerAccepted(accept);
     attemptStartedRef.current = true;
     const ok = startAttempt();
     setStoryPhase(ok ? 'playing' : null);
@@ -150,7 +160,8 @@ export default function GameScreen({ route, navigation }: Props) {
     Haptics.notificationAsync(
       won ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
     );
-    setResult({ won, score: finalScore, stars, coinsEarned });
+    const wagerResult = isStory && wagerAccepted ? resolveWager(won) : null;
+    setResult({ won, score: finalScore, stars, coinsEarned, wagerResult });
   };
 
   const handleResultContinue = () => {
@@ -308,6 +319,12 @@ export default function GameScreen({ route, navigation }: Props) {
             lines={chapter.before}
             onDone={handleBeforeDialogueDone}
           />
+          <WagerModal
+            visible={storyPhase === 'wager'}
+            hearts={lives}
+            onAccept={() => handleWagerChoice(true)}
+            onDecline={() => handleWagerChoice(false)}
+          />
           <DialogueModal visible={storyPhase === 'after'} lines={chapter.after} onDone={handleAfterDialogueDone} />
         </>
       )}
@@ -320,6 +337,7 @@ export default function GameScreen({ route, navigation }: Props) {
           target={level.targetScore}
           stars={result.stars}
           coinsEarned={result.coinsEarned}
+          wagerResult={result.wagerResult}
           onContinue={handleResultContinue}
           onRetry={handleRetry}
         />

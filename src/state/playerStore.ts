@@ -6,6 +6,8 @@ const STORAGE_KEY = 'match3.player.v1';
 
 export const MAX_LIVES = 5;
 export const LIFE_REGEN_MINUTES = 20;
+export const WAGER_HEARTS = 2;
+export const WAGER_OVERFLOW_COIN_RATE = 15;
 
 export type GameMode = 'arcade' | 'story';
 
@@ -38,6 +40,7 @@ type PlayerState = {
   setSoundEnabled: (enabled: boolean) => void;
   setMode: (mode: GameMode | null) => void;
   submitBlitzScore: (score: number) => boolean;
+  resolveWager: (won: boolean) => { heartsDelta: number; coinsBonus: number };
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -53,6 +56,7 @@ async function persist(state: Partial<PlayerState>) {
     setSoundEnabled,
     setMode,
     submitBlitzScore,
+    resolveWager,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -195,5 +199,33 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       persist({ ...get(), blitzBestScore: score });
     }
     return isNewBest;
+  },
+
+  resolveWager: (won) => {
+    const { lives, coins } = get();
+    if (won) {
+      const raw = lives + WAGER_HEARTS;
+      const newLives = Math.min(MAX_LIVES, raw);
+      const overflow = raw - newLives;
+      const coinsBonus = overflow * WAGER_OVERFLOW_COIN_RATE;
+      const next = {
+        lives: newLives,
+        coins: coins + coinsBonus,
+        lastLifeLostAt: newLives >= MAX_LIVES ? null : get().lastLifeLostAt,
+      };
+      set(next);
+      persist({ ...get(), ...next });
+      return { heartsDelta: newLives - lives, coinsBonus };
+    }
+
+    const newLives = Math.max(0, lives - WAGER_HEARTS);
+    const stillLosing = newLives < MAX_LIVES;
+    const next = {
+      lives: newLives,
+      lastLifeLostAt: stillLosing ? get().lastLifeLostAt ?? Date.now() : null,
+    };
+    set(next);
+    persist({ ...get(), ...next });
+    return { heartsDelta: newLives - lives, coinsBonus: 0 };
   },
 }));

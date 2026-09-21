@@ -34,7 +34,8 @@ export default function ModeSelectScreen({ navigation }: Props) {
         <Text style={styles.cardTitle}>Story Mode</Text>
         <Text style={styles.cardBody}>
           Play through "The Fading Prism" — the same levels, framed as chapters in Lyra Quinn's journey to stop Kaelen the
-          Unmaker and save the kingdom's magic.
+          Unmaker and save the kingdom's magic. Kaelen will tempt you to wager your hearts on every chapter — win big or
+          lose big, your call.
         </Text>
       </Pressable>
 

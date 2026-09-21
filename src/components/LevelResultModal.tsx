@@ -2,6 +2,11 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../game/theme';
 
+type WagerResult = {
+  heartsDelta: number;
+  coinsBonus: number;
+};
+
 type Props = {
   visible: boolean;
   won: boolean;
@@ -9,6 +14,7 @@ type Props = {
   target: number;
   stars: 0 | 1 | 2 | 3;
   coinsEarned: number;
+  wagerResult?: WagerResult | null;
   onContinue: () => void;
   onRetry: () => void;
 };
@@ -20,6 +26,7 @@ export default function LevelResultModal({
   target,
   stars,
   coinsEarned,
+  wagerResult,
   onContinue,
   onRetry,
 }: Props) {
@@ -45,6 +52,17 @@ export default function LevelResultModal({
           {won && coinsEarned > 0 && <Text style={styles.coinsText}>{'🪙'} +{coinsEarned}</Text>}
           {!won && (
             <Text style={styles.hintText}>You reached {Math.round((score / target) * 100)}% of the target — so close!</Text>
+          )}
+
+          {wagerResult && (
+            <View style={styles.wagerBox}>
+              <Text style={styles.wagerTitle}>{won ? "Kaelen's Wager: Won!" : "Kaelen's Wager: Lost"}</Text>
+              <Text style={[styles.wagerText, wagerResult.heartsDelta < 0 && styles.wagerTextLoss]}>
+                {wagerResult.heartsDelta >= 0 ? '+' : ''}
+                {wagerResult.heartsDelta} {'❤️'}
+                {wagerResult.coinsBonus > 0 ? `  ·  +${wagerResult.coinsBonus} 🪙 (hearts capped)` : ''}
+              </Text>
+            </View>
           )}
 
           <View style={styles.buttonRow}>
@@ -88,6 +106,17 @@ const styles = StyleSheet.create({
   scoreText: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
   coinsText: { color: COLORS.accent, fontSize: 15, fontWeight: '700', marginTop: 2 },
   hintText: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', marginTop: 2 },
+  wagerBox: {
+    backgroundColor: 'rgba(255,94,91,0.12)',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  wagerTitle: { color: COLORS.text, fontWeight: '700', fontSize: 12 },
+  wagerText: { color: COLORS.success, fontWeight: '800', fontSize: 14, marginTop: 2 },
+  wagerTextLoss: { color: COLORS.danger },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 16, width: '100%' },
   button: {
     flex: 1,
