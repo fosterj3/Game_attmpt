@@ -1,7 +1,8 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import BlitzPauseOverlay from '../components/BlitzPauseOverlay';
 import BlitzResultModal from '../components/BlitzResultModal';
 import BoardView from '../components/BoardView';
 import ComboPopup, { ComboEvent } from '../components/ComboPopup';
@@ -19,7 +20,7 @@ import {
   trySwap,
 } from '../game/board';
 import { chainTierFor, getComboMessage } from '../game/combo';
-import { startMusic, setMusicTier, stopMusic } from '../game/music';
+import { startMusic, setMusicTier, stopMusic, pauseMusic, resumeMusic } from '../game/music';
 import { playSound, SoundName } from '../game/sound';
 import { COLORS } from '../game/theme';
 import { Board, Position } from '../game/types';
@@ -73,6 +74,7 @@ export default function BlitzScreen({ navigation }: Props) {
   const [fireActive, setFireActive] = useState(false);
   const [igniting, setIgniting] = useState(false);
   const [hint, setHint] = useState<{ a: Position; b: Position } | null>(null);
+  const [paused, setPaused] = useState(false);
 
   const swapProgress = useRef(new Animated.Value(0)).current;
   const scoreRef = useRef(0);
@@ -80,13 +82,14 @@ export default function BlitzScreen({ navigation }: Props) {
   const lastMatchAtRef = useRef<number | null>(null);
   const fireActiveRef = useRef(false);
   const lastActionAtRef = useRef<number>(Date.now());
+  const pausedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
 
   useEffect(() => {
-    if (!started || finished) return;
+    if (!started || finished || paused) return;
     const watchdog = setInterval(() => {
       if (
         fireActiveRef.current &&
@@ -99,10 +102,10 @@ export default function BlitzScreen({ navigation }: Props) {
       }
     }, 400);
     return () => clearInterval(watchdog);
-  }, [started, finished]);
+  }, [started, finished, paused]);
 
   useEffect(() => {
-    if (!started || finished) return;
+    if (!started || finished || paused) return;
     const watchdog = setInterval(() => {
       if (busy || igniting) return;
       if (Date.now() - lastActionAtRef.current >= HINT_IDLE_MS) {
@@ -113,10 +116,10 @@ export default function BlitzScreen({ navigation }: Props) {
       }
     }, 500);
     return () => clearInterval(watchdog);
-  }, [started, finished, busy, igniting, board]);
+  }, [started, finished, paused, busy, igniting, board]);
 
   useEffect(() => {
-    if (!started || finished || igniting) return;
+    if (!started || finished || igniting || paused) return;
     const interval = setInterval(() => {
       setTimeLeft((t) => {
         const next = Math.max(0, t - 1);
@@ -126,7 +129,7 @@ export default function BlitzScreen({ navigation }: Props) {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [started, finished, igniting]);
+  }, [started, finished, igniting, paused]);
 
   useEffect(() => {
     if (started && !finished) {
@@ -147,6 +150,39 @@ export default function BlitzScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
+  // Auto-pause when the app/tab loses focus (backgrounded, tab switched,
+  // etc.) so players can't be timed out by something outside the game.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' && started && !finished && !pausedAtRef.current) {
+        pausedAtRef.current = Date.now();
+        setPaused(true);
+        pauseMusic();
+      }
+    });
+    return () => sub.remove();
+  }, [started, finished]);
+
+  const pauseRun = () => {
+    if (!started || finished || paused) return;
+    pausedAtRef.current = Date.now();
+    setPaused(true);
+    pauseMusic();
+  };
+
+  const resumeRun = () => {
+    if (!paused) return;
+    const pauseDurationMs = pausedAtRef.current !== null ? Date.now() - pausedAtRef.current : 0;
+    pausedAtRef.current = null;
+    // Shift the "time since last match/action" clocks forward by however
+    // long we were paused, so the pause itself can never be what expires
+    // fire or triggers an idle hint - mirrors the ignite-pause fix above.
+    if (lastMatchAtRef.current !== null) lastMatchAtRef.current += pauseDurationMs;
+    lastActionAtRef.current += pauseDurationMs;
+    setPaused(false);
+    resumeMusic();
+  };
+
   const startRun = async () => {
     setShowIntro(false);
     setResultVisible(false);
@@ -165,6 +201,8 @@ export default function BlitzScreen({ navigation }: Props) {
     setIgniting(false);
     setHint(null);
     lastActionAtRef.current = Date.now();
+    pausedAtRef.current = null;
+    setPaused(false);
 
     for (const value of [3, 2, 1] as const) {
       setCountdownValue(value);
@@ -235,7 +273,7 @@ export default function BlitzScreen({ navigation }: Props) {
   };
 
   const onTilePress = (pos: Position) => {
-    if (!started || busy || finished || igniting) return;
+    if (!started || busy || finished || igniting || paused) return;
     lastActionAtRef.current = Date.now();
     setHint(null);
     if (!selected) {
@@ -303,7 +341,13 @@ export default function BlitzScreen({ navigation }: Props) {
           <Text style={styles.iconButtonText}>{'←'}</Text>
         </Pressable>
         <Text style={styles.title}>{'⏱ Blitz'}</Text>
-        <View style={styles.iconButton} />
+        {started && !finished ? (
+          <Pressable onPress={pauseRun} style={styles.iconButton} hitSlop={12}>
+            <Text style={styles.iconButtonText}>{'⏸'}</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.iconButton} />
+        )}
       </View>
 
       <View style={styles.statsRow}>
@@ -362,6 +406,7 @@ export default function BlitzScreen({ navigation }: Props) {
       />
 
       <FireIgniteOverlay visible={igniting} />
+      <BlitzPauseOverlay visible={paused} onResume={resumeRun} onQuit={() => navigation.goBack()} />
     </View>
   );
 }

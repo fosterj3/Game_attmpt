@@ -61,3 +61,21 @@ export function stopMusic() {
     // ignore
   }
 }
+
+// Pause/resume in place (unlike stopMusic, doesn't reset position or the
+// remembered tier) - used when the player pauses a run rather than ending it.
+export function pauseMusic() {
+  try {
+    player?.pause();
+  } catch {
+    // ignore
+  }
+}
+
+export function resumeMusic() {
+  try {
+    if (currentTier) player?.play();
+  } catch {
+    // ignore
+  }
+}
