@@ -2,7 +2,6 @@ import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 
 const tracks = {
   calm: require('../../assets/sounds/music_calm.wav'),
-  medium: require('../../assets/sounds/music_medium.wav'),
   intense: require('../../assets/sounds/music_intense.wav'),
 } as const;
 

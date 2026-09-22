@@ -153,11 +153,12 @@ writeWav(
 // --- tick: urgent clock tick for the last 5 seconds of a Blitz run ---
 writeWav('tick.wav', tone(1150, 1050, 0.06, { wave: 'square', attack: 0.005, decayPow: 2.5, volume: 0.3 }));
 
-// --- in-play Blitz music: three original, looping arcade-rhythm tiers
-// (melody + bassline + kick/snare/hihat) that ramp up in tempo/energy as
-// time runs out (calm -> medium -> intense). Bouncy synth-arpeggio feel in
-// the spirit of Tetris Attack's puzzle-music style, but wholly original
-// notes/rhythm - not a reproduction of any existing game's music. ---
+// --- in-play Blitz music: two original, looping arcade-rhythm tiers
+// (melody + bassline + kick/snare/hihat) - a steady calm groove for most of
+// the run, and a fast intense tier that only kicks in for the final
+// countdown. Bouncy synth-arpeggio feel in the spirit of Tetris Attack's
+// puzzle-music style, but wholly original notes/rhythm - not a
+// reproduction of any existing game's music. ---
 const NOTE = {
   C3: 130.81,
   D3: 146.83,
@@ -263,30 +264,9 @@ writeWav(
   })
 );
 
-// medium: brighter square-lead, four-on-the-floor kick, steady 8th-note hats.
-writeWav(
-  'music_medium.wav',
-  buildLoop({
-    step: 0.125,
-    melody: [C4, E4, G4, C5, B4, G4, E4, G4, F4, A4, C5, D5, C5, A4, F4, G4],
-    bass: [C3, null, C3, null, F3, null, F3, null, G3, null, G3, null, C3, null, C3, null],
-    kicks: [0, 4, 8, 12],
-    snares: [4, 12],
-    hats: [0, 2, 4, 6, 8, 10, 12, 14],
-    opts: {
-      melodyWave: 'square',
-      bassWave: 'triangle',
-      melodyVolume: 0.26,
-      bassVolume: 0.24,
-      kickVolume: 0.48,
-      snareVolume: 0.3,
-      hatVolume: 0.14,
-    },
-  })
-);
-
 // intense: fast, syncopated, walking bass, hats on every 8th plus off-beat
-// snare accents - the "clock's almost out" push.
+// snare accents - the "clock's almost out" push, only used in the final
+// countdown of a run.
 writeWav(
   'music_intense.wav',
   buildLoop({
@@ -307,5 +287,26 @@ writeWav(
     },
   })
 );
+
+// --- chain/combo escalation chimes: a bright, rising jingle that plays on
+// top of the base pop/combo hit for chained cascades and big (4+) matches -
+// each tier sits a step higher and adds another harmony note, echoing the
+// escalating "connection" jingle from Tetris Attack. Purely original
+// intervals/rhythm, not a reproduction of any existing game's chime. ---
+function chainChime(tier) {
+  const base = 587.33 * Math.pow(2, (tier - 1) / 7); // rises roughly a whole tone per tier
+  const notes = [base, base * 1.2599]; // root + major third
+  if (tier >= 3) notes.push(base * 1.4983); // + perfect fifth
+  if (tier >= 5) notes.push(base * 2); // + octave sparkle
+  return concat(
+    ...notes.map((f, i) =>
+      note(f, 0.07, { wave: 'sine', attack: 0.004, decayPow: 2.1, volume: 0.36 + i * 0.04 })
+    )
+  );
+}
+
+for (let tier = 1; tier <= 6; tier++) {
+  writeWav(`chain${tier}.wav`, chainChime(tier));
+}
 
 console.log('Done.');

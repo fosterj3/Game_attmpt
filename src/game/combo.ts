@@ -21,3 +21,15 @@ export function getComboMessage(clearedCount: number, cascadeIndex: number, poin
 
   return { label: parts.join(' '), points };
 }
+
+/**
+ * Tier (0-6) for the escalating chain/combo chime: rises with chained
+ * cascades (cascadeIndex) and with big single matches (4+ tiles), whichever
+ * is higher. 0 means "no extra chime" (plain 3-match, no chain).
+ */
+export function chainTierFor(clearedCount: number, cascadeIndex: number): number {
+  let tier = 0;
+  if (cascadeIndex >= 1) tier = Math.min(cascadeIndex, 5);
+  if (clearedCount >= 4) tier = Math.max(tier, clearedCount - 3);
+  return Math.min(tier, 6);
+}

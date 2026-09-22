@@ -17,9 +17,9 @@ import {
   scoreForClear,
   trySwap,
 } from '../game/board';
-import { getComboMessage } from '../game/combo';
+import { chainTierFor, getComboMessage } from '../game/combo';
 import { startMusic, setMusicTier, stopMusic } from '../game/music';
-import { playSound } from '../game/sound';
+import { playSound, SoundName } from '../game/sound';
 import { COLORS } from '../game/theme';
 import { Board, Position } from '../game/types';
 import { RootStackParamList } from '../navigation/types';
@@ -33,13 +33,10 @@ const FIRE_THRESHOLD = 5;
 const IGNITE_PAUSE_MS = 1300;
 const COUNTDOWN_TICK_MS = 900;
 const TICKING_THRESHOLD_SECONDS = 5;
-const MUSIC_MEDIUM_THRESHOLD_SECONDS = 20;
-const MUSIC_INTENSE_THRESHOLD_SECONDS = 10;
+const MUSIC_INTENSE_THRESHOLD_SECONDS = 5;
 
-function musicTierForTime(secondsLeft: number): 'calm' | 'medium' | 'intense' {
-  if (secondsLeft <= MUSIC_INTENSE_THRESHOLD_SECONDS) return 'intense';
-  if (secondsLeft <= MUSIC_MEDIUM_THRESHOLD_SECONDS) return 'medium';
-  return 'calm';
+function musicTierForTime(secondsLeft: number): 'calm' | 'intense' {
+  return secondsLeft <= MUSIC_INTENSE_THRESHOLD_SECONDS ? 'intense' : 'calm';
 }
 
 function delay(ms: number) {
@@ -193,6 +190,8 @@ export default function BlitzScreen({ navigation }: Props) {
       setComboEvent({ id: Date.now() + cascadeIndex, label, points: combo.points });
       setPoppingIds(clearedIds);
       playSound(cascadeIndex > 0 ? 'combo' : 'pop');
+      const chainTier = chainTierFor(matches.length, cascadeIndex);
+      if (chainTier > 0) playSound(`chain${chainTier}` as SoundName);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await delay(150);
 

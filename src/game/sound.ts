@@ -12,6 +12,12 @@ const sources = {
   beep: require('../../assets/sounds/beep.wav'),
   go: require('../../assets/sounds/go.wav'),
   tick: require('../../assets/sounds/tick.wav'),
+  chain1: require('../../assets/sounds/chain1.wav'),
+  chain2: require('../../assets/sounds/chain2.wav'),
+  chain3: require('../../assets/sounds/chain3.wav'),
+  chain4: require('../../assets/sounds/chain4.wav'),
+  chain5: require('../../assets/sounds/chain5.wav'),
+  chain6: require('../../assets/sounds/chain6.wav'),
 } as const;
 
 export type SoundName = keyof typeof sources;

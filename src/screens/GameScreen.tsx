@@ -21,8 +21,8 @@ import {
   scoreForClear,
   trySwap,
 } from '../game/board';
-import { getComboMessage } from '../game/combo';
-import { playSound } from '../game/sound';
+import { chainTierFor, getComboMessage } from '../game/combo';
+import { playSound, SoundName } from '../game/sound';
 import { COLORS } from '../game/theme';
 import { Board, Position } from '../game/types';
 import { RootStackParamList } from '../navigation/types';
@@ -201,6 +201,8 @@ export default function GameScreen({ route, navigation }: Props) {
       setComboEvent({ id: Date.now() + cascadeIndex, label: combo.label, points: combo.points });
       setPoppingIds(clearedIds);
       playSound(cascadeIndex > 0 ? 'combo' : 'pop');
+      const chainTier = chainTierFor(matches.length, cascadeIndex);
+      if (chainTier > 0) playSound(`chain${chainTier}` as SoundName);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await delay(180);
 
