@@ -9,6 +9,9 @@ const sources = {
   lose: require('../../assets/sounds/lose.wav'),
   fire: require('../../assets/sounds/fire.wav'),
   newbest: require('../../assets/sounds/newbest.wav'),
+  beep: require('../../assets/sounds/beep.wav'),
+  go: require('../../assets/sounds/go.wav'),
+  tick: require('../../assets/sounds/tick.wav'),
 } as const;
 
 export type SoundName = keyof typeof sources;

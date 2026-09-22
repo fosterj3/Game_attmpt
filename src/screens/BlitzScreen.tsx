@@ -5,6 +5,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import BlitzResultModal from '../components/BlitzResultModal';
 import BoardView from '../components/BoardView';
 import ComboPopup, { ComboEvent } from '../components/ComboPopup';
+import CountdownOverlay from '../components/CountdownOverlay';
 import FireBanner from '../components/FireBanner';
 import FireIgniteOverlay from '../components/FireIgniteOverlay';
 import {
@@ -29,6 +30,8 @@ export const BLITZ_DURATION_SECONDS = 60;
 const FIRE_WINDOW_MS = 2200;
 const FIRE_THRESHOLD = 5;
 const IGNITE_PAUSE_MS = 1300;
+const COUNTDOWN_TICK_MS = 900;
+const TICKING_THRESHOLD_SECONDS = 5;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,6 +46,8 @@ export default function BlitzScreen({ navigation }: Props) {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(BLITZ_DURATION_SECONDS);
   const [started, setStarted] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
+  const [countdownValue, setCountdownValue] = useState<number | 'GO' | null>(null);
   const [busy, setBusy] = useState(false);
   const [finished, setFinished] = useState(false);
   const [poppingIds, setPoppingIds] = useState<Set<number>>(new Set());
@@ -84,7 +89,11 @@ export default function BlitzScreen({ navigation }: Props) {
   useEffect(() => {
     if (!started || finished || igniting) return;
     const interval = setInterval(() => {
-      setTimeLeft((t) => Math.max(0, t - 1));
+      setTimeLeft((t) => {
+        const next = Math.max(0, t - 1);
+        if (next > 0 && next <= TICKING_THRESHOLD_SECONDS) playSound('tick');
+        return next;
+      });
     }, 1000);
     return () => clearInterval(interval);
   }, [started, finished, igniting]);
@@ -96,7 +105,9 @@ export default function BlitzScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
-  const startRun = () => {
+  const startRun = async () => {
+    setShowIntro(false);
+    setResultVisible(false);
     setBoard(generateBoard());
     setScore(0);
     scoreRef.current = 0;
@@ -105,13 +116,22 @@ export default function BlitzScreen({ navigation }: Props) {
     setSelected(null);
     setPoppingIds(new Set());
     setFallSeed((s) => s + 1);
-    setResultVisible(false);
-    setStarted(true);
     streakRef.current = 0;
     lastMatchAtRef.current = null;
     fireActiveRef.current = false;
     setFireActive(false);
     setIgniting(false);
+
+    for (const value of [3, 2, 1] as const) {
+      setCountdownValue(value);
+      playSound('beep');
+      await delay(COUNTDOWN_TICK_MS);
+    }
+    setCountdownValue('GO');
+    playSound('go');
+    await delay(COUNTDOWN_TICK_MS * 0.6);
+    setCountdownValue(null);
+    setStarted(true);
   };
 
   const finishRun = () => {
@@ -253,6 +273,7 @@ export default function BlitzScreen({ navigation }: Props) {
       <View style={[styles.boardWrap, fireActive && styles.boardWrapOnFire]}>
         <FireBanner active={fireActive} />
         <FireIgniteOverlay visible={igniting} />
+        <CountdownOverlay value={countdownValue} />
         <ComboPopup event={comboEvent} />
         <BoardView
           board={board}
@@ -263,7 +284,7 @@ export default function BlitzScreen({ navigation }: Props) {
           swap={swapPair ? { a: swapPair.a, b: swapPair.b, progress: swapProgress } : null}
         />
 
-        {!started && (
+        {showIntro && (
           <View style={styles.startOverlay}>
             <Text style={styles.startTitle}>Blitz Mode</Text>
             <Text style={styles.startBody}>

@@ -138,4 +138,19 @@ writeWav(
   )
 );
 
+// --- beep: countdown tick (3, 2, 1) before a Blitz run starts ---
+writeWav('beep.wav', tone(720, 720, 0.14, { attack: 0.01, decayPow: 2.2, volume: 0.45 }));
+
+// --- go: bright confirm chime when the Blitz countdown finishes ---
+writeWav(
+  'go.wav',
+  concat(
+    tone(660, 660, 0.09, { attack: 0.005, decayPow: 2, volume: 0.45 }),
+    tone(990, 990, 0.22, { attack: 0.005, decayPow: 1.4, volume: 0.55 })
+  )
+);
+
+// --- tick: urgent clock tick for the last 5 seconds of a Blitz run ---
+writeWav('tick.wav', tone(1150, 1050, 0.06, { wave: 'square', attack: 0.005, decayPow: 2.5, volume: 0.3 }));
+
 console.log('Done.');
