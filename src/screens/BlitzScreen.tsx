@@ -18,6 +18,7 @@ import {
   trySwap,
 } from '../game/board';
 import { getComboMessage } from '../game/combo';
+import { startMusic, setMusicTier, stopMusic } from '../game/music';
 import { playSound } from '../game/sound';
 import { COLORS } from '../game/theme';
 import { Board, Position } from '../game/types';
@@ -27,11 +28,19 @@ import { usePlayerStore } from '../state/playerStore';
 type Props = NativeStackScreenProps<RootStackParamList, 'Blitz'>;
 
 export const BLITZ_DURATION_SECONDS = 60;
-const FIRE_WINDOW_MS = 2200;
+const FIRE_WINDOW_MS = 2000;
 const FIRE_THRESHOLD = 5;
 const IGNITE_PAUSE_MS = 1300;
 const COUNTDOWN_TICK_MS = 900;
 const TICKING_THRESHOLD_SECONDS = 5;
+const MUSIC_MEDIUM_THRESHOLD_SECONDS = 20;
+const MUSIC_INTENSE_THRESHOLD_SECONDS = 10;
+
+function musicTierForTime(secondsLeft: number): 'calm' | 'medium' | 'intense' {
+  if (secondsLeft <= MUSIC_INTENSE_THRESHOLD_SECONDS) return 'intense';
+  if (secondsLeft <= MUSIC_MEDIUM_THRESHOLD_SECONDS) return 'medium';
+  return 'calm';
+}
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,11 +106,24 @@ export default function BlitzScreen({ navigation }: Props) {
       setTimeLeft((t) => {
         const next = Math.max(0, t - 1);
         if (next > 0 && next <= TICKING_THRESHOLD_SECONDS) playSound('tick');
+        if (next > 0) setMusicTier(musicTierForTime(next));
         return next;
       });
     }, 1000);
     return () => clearInterval(interval);
   }, [started, finished, igniting]);
+
+  useEffect(() => {
+    if (started && !finished) {
+      startMusic('calm');
+    }
+  }, [started, finished]);
+
+  useEffect(() => {
+    // Safety net: always silence Blitz music if this screen goes away,
+    // regardless of how (back button, finishing, navigating elsewhere).
+    return () => stopMusic();
+  }, []);
 
   useEffect(() => {
     if (started && !finished && timeLeft === 0) {
@@ -142,6 +164,7 @@ export default function BlitzScreen({ navigation }: Props) {
   const finishRun = () => {
     if (finished) return;
     setFinished(true);
+    stopMusic();
     const total = scoreRef.current;
     setFinalScore(total);
     const result = completeBlitzRun(total);
@@ -279,7 +302,6 @@ export default function BlitzScreen({ navigation }: Props) {
 
       <View style={[styles.boardWrap, fireActive && styles.boardWrapOnFire]}>
         <FireBanner active={fireActive} />
-        <FireIgniteOverlay visible={igniting} />
         <CountdownOverlay value={countdownValue} />
         <ComboPopup event={comboEvent} />
         <BoardView
@@ -316,6 +338,8 @@ export default function BlitzScreen({ navigation }: Props) {
         onPlayAgain={startRun}
         onDone={() => navigation.goBack()}
       />
+
+      <FireIgniteOverlay visible={igniting} />
     </View>
   );
 }

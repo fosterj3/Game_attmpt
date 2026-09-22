@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { COLORS } from './src/game/theme';
+import { setMusicMuted } from './src/game/music';
 import { setMuted } from './src/game/sound';
 import { usePlayerStore } from './src/state/playerStore';
 
@@ -21,6 +22,7 @@ export default function App() {
 
   useEffect(() => {
     setMuted(!soundEnabled);
+    setMusicMuted(!soundEnabled);
   }, [soundEnabled]);
 
   if (!ready || !hydrated) {

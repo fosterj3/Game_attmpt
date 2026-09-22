@@ -153,4 +153,68 @@ writeWav(
 // --- tick: urgent clock tick for the last 5 seconds of a Blitz run ---
 writeWav('tick.wav', tone(1150, 1050, 0.06, { wave: 'square', attack: 0.005, decayPow: 2.5, volume: 0.3 }));
 
+// --- in-play Blitz music: three original, looping arpeggio tiers that ramp
+// up in tempo/energy as time runs out (calm -> medium -> intense). Purely
+// original notes/rhythm, not a reproduction of any existing game's music. ---
+const NOTE = {
+  C3: 130.81,
+  G3: 196.0,
+  A3: 220.0,
+  C4: 261.63,
+  D4: 293.66,
+  E4: 329.63,
+  F4: 349.23,
+  G4: 392.0,
+  A4: 440.0,
+  C5: 523.25,
+  D5: 587.33,
+  E5: 659.25,
+};
+
+function note(freq, seconds, opts) {
+  return tone(freq, freq, seconds, opts);
+}
+
+writeWav(
+  'music_calm.wav',
+  concat(
+    note(NOTE.C4, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.3 }),
+    note(NOTE.E4, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.3 }),
+    note(NOTE.G4, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.32 }),
+    note(NOTE.C5, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.34 }),
+    note(NOTE.G4, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.3 }),
+    note(NOTE.E4, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.3 }),
+    note(NOTE.D4, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.28 }),
+    note(NOTE.G3, 0.24, { wave: 'triangle', attack: 0.02, decayPow: 1.4, volume: 0.26 })
+  )
+);
+
+writeWav(
+  'music_medium.wav',
+  concat(
+    note(NOTE.C4, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.26 }),
+    note(NOTE.E4, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.26 }),
+    note(NOTE.G4, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.28 }),
+    note(NOTE.C5, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.3 }),
+    note(NOTE.D5, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.3 }),
+    note(NOTE.C5, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.28 }),
+    note(NOTE.A4, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.26 }),
+    note(NOTE.G4, 0.16, { wave: 'square', attack: 0.008, decayPow: 1.8, volume: 0.24 })
+  )
+);
+
+writeWav(
+  'music_intense.wav',
+  concat(
+    note(NOTE.C4, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.28 }),
+    note(NOTE.G4, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.28 }),
+    note(NOTE.C5, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.32 }),
+    note(NOTE.E5, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.32 }),
+    note(NOTE.D5, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.3 }),
+    note(NOTE.C5, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.3 }),
+    note(NOTE.A4, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.28 }),
+    note(NOTE.G4, 0.1, { wave: 'square', attack: 0.004, decayPow: 2, volume: 0.26 })
+  )
+);
+
 console.log('Done.');
