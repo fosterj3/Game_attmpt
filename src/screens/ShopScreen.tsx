@@ -2,12 +2,17 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BOOSTS } from '../data/shop';
 import { COLORS } from '../game/theme';
-import { usePlayerStore } from '../state/playerStore';
+import { HEART_PRICE_COINS, MAX_LIVES, usePlayerStore } from '../state/playerStore';
 
 export default function ShopScreen() {
   const coins = usePlayerStore((s) => s.coins);
+  const lives = usePlayerStore((s) => s.lives);
   const inventory = usePlayerStore((s) => s.inventory);
   const purchaseBoost = usePlayerStore((s) => s.purchaseBoost);
+  const purchaseHeart = usePlayerStore((s) => s.purchaseHeart);
+
+  const heartsFull = lives >= MAX_LIVES;
+  const canAffordHeart = coins >= HEART_PRICE_COINS;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 48, gap: 12 }}>
@@ -38,6 +43,25 @@ export default function ShopScreen() {
           </View>
         );
       })}
+
+      <Text style={styles.sectionTitle}>Premium</Text>
+      <View style={[styles.card, styles.heartCard]}>
+        <Text style={styles.emoji}>{'❤️'}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>Refill a Heart</Text>
+          <Text style={styles.description}>
+            A rare splurge for when you've got coins to spare and don't want to wait for a heart to regenerate.
+          </Text>
+          <Text style={styles.owned}>{lives}/{MAX_LIVES} hearts</Text>
+        </View>
+        <Pressable
+          disabled={!canAffordHeart || heartsFull}
+          onPress={() => purchaseHeart()}
+          style={[styles.buyButton, styles.heartButton, (!canAffordHeart || heartsFull) && styles.buyButtonDisabled]}
+        >
+          <Text style={styles.buyButtonText}>{heartsFull ? 'Full' : `🪙 ${HEART_PRICE_COINS.toLocaleString()}`}</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -54,6 +78,7 @@ const styles = StyleSheet.create({
   },
   coinsText: { color: COLORS.accent, fontWeight: '700', fontSize: 15 },
   subtitle: { color: COLORS.textMuted, fontSize: 13, marginTop: -4 },
+  sectionTitle: { color: COLORS.text, fontSize: 16, fontWeight: '800', marginTop: 8 },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 18,
@@ -61,6 +86,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  heartCard: {
+    borderWidth: 1,
+    borderColor: COLORS.danger,
   },
   emoji: { fontSize: 32 },
   name: { color: COLORS.text, fontWeight: '800', fontSize: 16 },
@@ -72,6 +101,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
+  heartButton: { backgroundColor: COLORS.danger },
   buyButtonDisabled: { backgroundColor: COLORS.surfaceLight, opacity: 0.5 },
   buyButtonText: { color: COLORS.text, fontWeight: '800', fontSize: 14 },
 });

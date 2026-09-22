@@ -39,7 +39,7 @@ function delay(ms: number) {
 
 export default function BlitzScreen({ navigation }: Props) {
   const blitzBestScore = usePlayerStore((s) => s.blitzBestScore);
-  const submitBlitzScore = usePlayerStore((s) => s.submitBlitzScore);
+  const completeBlitzRun = usePlayerStore((s) => s.completeBlitzRun);
 
   const [board, setBoard] = useState<Board>(() => generateBoard());
   const [selected, setSelected] = useState<Position | null>(null);
@@ -57,6 +57,11 @@ export default function BlitzScreen({ navigation }: Props) {
   const [resultVisible, setResultVisible] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
+  const [runReward, setRunReward] = useState<{
+    coinsEarned: number;
+    rank: number;
+    milestones: { top10: boolean; top3: boolean; first: boolean };
+  } | null>(null);
   const [fireActive, setFireActive] = useState(false);
   const [igniting, setIgniting] = useState(false);
 
@@ -139,9 +144,11 @@ export default function BlitzScreen({ navigation }: Props) {
     setFinished(true);
     const total = scoreRef.current;
     setFinalScore(total);
-    const newBest = submitBlitzScore(total);
-    setIsNewBest(newBest);
-    playSound(newBest ? 'newbest' : 'lose');
+    const result = completeBlitzRun(total);
+    setIsNewBest(result.isNewBest);
+    setRunReward({ coinsEarned: result.coinsEarned, rank: result.rank, milestones: result.milestones });
+    const bigWin = result.isNewBest || result.milestones.top10 || result.milestones.top3 || result.milestones.first;
+    playSound(bigWin ? 'newbest' : 'lose');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setResultVisible(true);
   };
@@ -303,6 +310,9 @@ export default function BlitzScreen({ navigation }: Props) {
         score={finalScore}
         bestScore={Math.max(finalScore, blitzBestScore)}
         isNewBest={isNewBest}
+        coinsEarned={runReward?.coinsEarned ?? 0}
+        rank={runReward?.rank ?? null}
+        milestones={runReward?.milestones ?? null}
         onPlayAgain={startRun}
         onDone={() => navigation.goBack()}
       />

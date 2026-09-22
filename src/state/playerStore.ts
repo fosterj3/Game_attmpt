@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { getBlitzRank } from '../data/leaderboard';
 import { LEVELS, getLevel } from '../data/levels';
 import { BoostId, getBoost } from '../data/shop';
 
@@ -10,8 +11,21 @@ export const LIFE_REGEN_MINUTES = 20;
 export const WAGER_HEARTS = 2;
 export const WAGER_OVERFLOW_COIN_RATE = 15;
 export const COINS_PER_LEFTOVER_MOVE = 10;
+export const BLITZ_COMPLETION_COINS = 10;
+export const BLITZ_NEW_BEST_COINS = 20;
+export const BLITZ_TOP10_COINS = 100;
+export const BLITZ_TOP3_COINS = 500;
+export const BLITZ_FIRST_PLACE_COINS = 1000;
+export const HEART_PRICE_COINS = 10000;
 
 export type GameMode = 'arcade' | 'story';
+
+export type BlitzRunResult = {
+  coinsEarned: number;
+  isNewBest: boolean;
+  rank: number;
+  milestones: { top10: boolean; top3: boolean; first: boolean };
+};
 
 type LevelProgress = {
   bestStars: 0 | 1 | 2 | 3;
@@ -31,6 +45,7 @@ type PlayerState = {
   soundEnabled: boolean;
   activeMode: GameMode | null;
   blitzBestScore: number;
+  bestBlitzRankAchieved: number | null;
   inventory: Record<BoostId, number>;
 
   hydrate: () => Promise<void>;
@@ -47,10 +62,11 @@ type PlayerState = {
   markHowToPlaySeen: () => void;
   setSoundEnabled: (enabled: boolean) => void;
   setMode: (mode: GameMode | null) => void;
-  submitBlitzScore: (score: number) => boolean;
+  completeBlitzRun: (score: number) => BlitzRunResult;
   resolveWager: (won: boolean) => { heartsDelta: number; coinsBonus: number };
   purchaseBoost: (id: BoostId) => boolean;
   consumeBoost: (id: BoostId) => boolean;
+  purchaseHeart: () => boolean;
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -65,10 +81,11 @@ async function persist(state: Partial<PlayerState>) {
     markHowToPlaySeen,
     setSoundEnabled,
     setMode,
-    submitBlitzScore,
+    completeBlitzRun,
     resolveWager,
     purchaseBoost,
     consumeBoost,
+    purchaseHeart,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -97,6 +114,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   soundEnabled: true,
   activeMode: null,
   blitzBestScore: 0,
+  bestBlitzRankAchieved: null,
   inventory: { hint: 0, extraMoves: 0, freezeTime: 0 },
 
   hydrate: async () => {
@@ -212,14 +230,41 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     persist({ ...get(), activeMode: mode });
   },
 
-  submitBlitzScore: (score) => {
-    const { blitzBestScore } = get();
+  completeBlitzRun: (score) => {
+    const { coins, blitzBestScore, bestBlitzRankAchieved } = get();
     const isNewBest = score > blitzBestScore;
-    if (isNewBest) {
-      set({ blitzBestScore: score });
-      persist({ ...get(), blitzBestScore: score });
+    const newBestScore = isNewBest ? score : blitzBestScore;
+    const rank = getBlitzRank(newBestScore);
+
+    // Rank-tier bonuses are one-time achievements, not repeatable per
+    // session - otherwise sitting at #1 on a mostly-static leaderboard
+    // would pay out every single run regardless of that run's score.
+    const milestones = { top10: false, top3: false, first: false };
+    let milestoneCoins = 0;
+    if (rank <= 10 && (bestBlitzRankAchieved === null || bestBlitzRankAchieved > 10)) {
+      milestones.top10 = true;
+      milestoneCoins += BLITZ_TOP10_COINS;
     }
-    return isNewBest;
+    if (rank <= 3 && (bestBlitzRankAchieved === null || bestBlitzRankAchieved > 3)) {
+      milestones.top3 = true;
+      milestoneCoins += BLITZ_TOP3_COINS;
+    }
+    if (rank === 1 && (bestBlitzRankAchieved === null || bestBlitzRankAchieved > 1)) {
+      milestones.first = true;
+      milestoneCoins += BLITZ_FIRST_PLACE_COINS;
+    }
+
+    const coinsEarned = BLITZ_COMPLETION_COINS + (isNewBest ? BLITZ_NEW_BEST_COINS : 0) + milestoneCoins;
+    const nextBestRank = bestBlitzRankAchieved === null ? rank : Math.min(bestBlitzRankAchieved, rank);
+
+    const next = {
+      blitzBestScore: newBestScore,
+      bestBlitzRankAchieved: nextBestRank,
+      coins: coins + coinsEarned,
+    };
+    set(next);
+    persist({ ...get(), ...next });
+    return { coinsEarned, isNewBest, rank, milestones };
   },
 
   resolveWager: (won) => {
@@ -267,6 +312,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { inventory } = get();
     if (inventory[id] <= 0) return false;
     const next = { inventory: { ...inventory, [id]: inventory[id] - 1 } };
+    set(next);
+    persist({ ...get(), ...next });
+    return true;
+  },
+
+  purchaseHeart: () => {
+    const { coins, lives } = get();
+    if (coins < HEART_PRICE_COINS || lives >= MAX_LIVES) return false;
+    const newLives = lives + 1;
+    const next = {
+      coins: coins - HEART_PRICE_COINS,
+      lives: newLives,
+      lastLifeLostAt: newLives >= MAX_LIVES ? null : get().lastLifeLostAt,
+    };
     set(next);
     persist({ ...get(), ...next });
     return true;

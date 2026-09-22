@@ -2,23 +2,40 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../game/theme';
 
+type Milestones = { top10: boolean; top3: boolean; first: boolean } | null;
+
 type Props = {
   visible: boolean;
   score: number;
   bestScore: number;
   isNewBest: boolean;
+  coinsEarned?: number;
+  rank?: number | null;
+  milestones?: Milestones;
   onPlayAgain: () => void;
   onDone: () => void;
 };
 
 const SPARKLES = ['✨', '⭐', '✨', '🎉', '✨', '⭐'];
 
-export default function BlitzResultModal({ visible, score, bestScore, isNewBest, onPlayAgain, onDone }: Props) {
+export default function BlitzResultModal({
+  visible,
+  score,
+  bestScore,
+  isNewBest,
+  coinsEarned = 0,
+  rank = null,
+  milestones = null,
+  onPlayAgain,
+  onDone,
+}: Props) {
+  const hasMilestone = !!(milestones && (milestones.top10 || milestones.top3 || milestones.first));
+  const grand = isNewBest || hasMilestone;
   const trophyBounce = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!visible || !isNewBest) return;
+    if (!visible || !grand) return;
     trophyBounce.setValue(0);
     Animated.sequence([
       Animated.spring(trophyBounce, { toValue: 1, useNativeDriver: true, friction: 4, tension: 80 }),
@@ -38,15 +55,15 @@ export default function BlitzResultModal({ visible, score, bestScore, isNewBest,
     );
     loop.start();
     return () => loop.stop();
-  }, [visible, isNewBest, trophyBounce, glow]);
+  }, [visible, grand, trophyBounce, glow]);
 
   const borderColor = glow.interpolate({ inputRange: [0, 1], outputRange: [COLORS.accent, '#FFE066'] });
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onDone}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.card, isNewBest && [styles.cardBest, { borderColor }]]}>
-          {isNewBest && (
+        <Animated.View style={[styles.card, grand && [styles.cardBest, { borderColor }]]}>
+          {grand && (
             <View style={styles.sparkleRow} pointerEvents="none">
               {SPARKLES.map((s, i) => (
                 <Text key={i} style={styles.sparkle}>
@@ -55,13 +72,24 @@ export default function BlitzResultModal({ visible, score, bestScore, isNewBest,
               ))}
             </View>
           )}
-          <Animated.Text style={[styles.badge, isNewBest && { transform: [{ scale: trophyBounce }] }]}>
-            {isNewBest ? '🏆' : '⏱️'}
+          <Animated.Text style={[styles.badge, grand && { transform: [{ scale: trophyBounce }] }]}>
+            {grand ? '🏆' : '⏱️'}
           </Animated.Text>
           <Text style={styles.title}>{"Time's Up!"}</Text>
           {isNewBest && <Text style={styles.newBest}>{'🎉 NEW BEST SCORE! 🎉'}</Text>}
-          <Text style={[styles.scoreText, isNewBest && styles.scoreTextBest]}>{score} pts</Text>
+          <Text style={[styles.scoreText, grand && styles.scoreTextBest]}>{score} pts</Text>
           <Text style={styles.bestText}>Best: {bestScore} pts</Text>
+          {rank !== null && <Text style={styles.rankText}>Leaderboard rank: #{rank}</Text>}
+
+          {coinsEarned > 0 && (
+            <View style={styles.rewardBox}>
+              <Text style={styles.rewardLine}>{'🪙'} +{coinsEarned} coins</Text>
+              <Text style={styles.rewardBreakdown}>+10 for playing{isNewBest ? ' · +20 new best' : ''}</Text>
+              {milestones?.top10 && <Text style={styles.milestoneLine}>{'🏅'} First time Top 10! +100</Text>}
+              {milestones?.top3 && <Text style={styles.milestoneLine}>{'🥉'} First time Top 3! +500</Text>}
+              {milestones?.first && <Text style={styles.milestoneLine}>{'👑'} First time #1! +1000</Text>}
+            </View>
+          )}
 
           <View style={styles.buttonRow}>
             <Pressable style={[styles.button, styles.secondaryButton]} onPress={onDone}>
@@ -109,6 +137,19 @@ const styles = StyleSheet.create({
   scoreText: { color: COLORS.text, fontSize: 28, fontWeight: '800', marginTop: 10 },
   scoreTextBest: { color: '#FFE066', fontSize: 34 },
   bestText: { color: COLORS.textMuted, fontSize: 13, marginTop: 2 },
+  rankText: { color: COLORS.textMuted, fontSize: 12, marginTop: 4 },
+  rewardBox: {
+    backgroundColor: 'rgba(124,92,255,0.14)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    alignItems: 'center',
+    gap: 2,
+  },
+  rewardLine: { color: COLORS.accent, fontWeight: '800', fontSize: 16 },
+  rewardBreakdown: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
+  milestoneLine: { color: '#FFE066', fontWeight: '700', fontSize: 12, marginTop: 4 },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 18, width: '100%' },
   button: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   primaryButton: { backgroundColor: COLORS.primary },
