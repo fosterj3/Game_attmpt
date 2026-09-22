@@ -11,6 +11,7 @@ import FireIgniteOverlay from '../components/FireIgniteOverlay';
 import {
   clearMatches,
   collapseColumns,
+  findAnyValidMove,
   findMatchedPositions,
   generateBoard,
   hasAnyValidMove,
@@ -34,6 +35,7 @@ const IGNITE_PAUSE_MS = 1300;
 const COUNTDOWN_TICK_MS = 900;
 const TICKING_THRESHOLD_SECONDS = 5;
 const MUSIC_INTENSE_THRESHOLD_SECONDS = 5;
+const HINT_IDLE_MS = 5000;
 
 function musicTierForTime(secondsLeft: number): 'calm' | 'intense' {
   return secondsLeft <= MUSIC_INTENSE_THRESHOLD_SECONDS ? 'intense' : 'calm';
@@ -70,12 +72,14 @@ export default function BlitzScreen({ navigation }: Props) {
   } | null>(null);
   const [fireActive, setFireActive] = useState(false);
   const [igniting, setIgniting] = useState(false);
+  const [hint, setHint] = useState<{ a: Position; b: Position } | null>(null);
 
   const swapProgress = useRef(new Animated.Value(0)).current;
   const scoreRef = useRef(0);
   const streakRef = useRef(0);
   const lastMatchAtRef = useRef<number | null>(null);
   const fireActiveRef = useRef(false);
+  const lastActionAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     scoreRef.current = score;
@@ -96,6 +100,20 @@ export default function BlitzScreen({ navigation }: Props) {
     }, 400);
     return () => clearInterval(watchdog);
   }, [started, finished]);
+
+  useEffect(() => {
+    if (!started || finished) return;
+    const watchdog = setInterval(() => {
+      if (busy || igniting) return;
+      if (Date.now() - lastActionAtRef.current >= HINT_IDLE_MS) {
+        setHint(findAnyValidMove(board));
+        // Re-arm rather than leave it stuck on: if they're still idle after
+        // this, the hint re-appears (or refreshes) every HINT_IDLE_MS.
+        lastActionAtRef.current = Date.now();
+      }
+    }, 500);
+    return () => clearInterval(watchdog);
+  }, [started, finished, busy, igniting, board]);
 
   useEffect(() => {
     if (!started || finished || igniting) return;
@@ -145,6 +163,8 @@ export default function BlitzScreen({ navigation }: Props) {
     fireActiveRef.current = false;
     setFireActive(false);
     setIgniting(false);
+    setHint(null);
+    lastActionAtRef.current = Date.now();
 
     for (const value of [3, 2, 1] as const) {
       setCountdownValue(value);
@@ -216,6 +236,8 @@ export default function BlitzScreen({ navigation }: Props) {
 
   const onTilePress = (pos: Position) => {
     if (!started || busy || finished || igniting) return;
+    lastActionAtRef.current = Date.now();
+    setHint(null);
     if (!selected) {
       setSelected(pos);
       playSound('tap');
@@ -310,6 +332,7 @@ export default function BlitzScreen({ navigation }: Props) {
           poppingIds={poppingIds}
           fallSeed={fallSeed}
           swap={swapPair ? { a: swapPair.a, b: swapPair.b, progress: swapProgress } : null}
+          hint={hint}
         />
 
         {showIntro && (

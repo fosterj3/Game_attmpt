@@ -153,13 +153,16 @@ writeWav(
 // --- tick: urgent clock tick for the last 5 seconds of a Blitz run ---
 writeWav('tick.wav', tone(1150, 1050, 0.06, { wave: 'square', attack: 0.005, decayPow: 2.5, volume: 0.3 }));
 
-// --- in-play Blitz music: two original, looping arcade-rhythm tiers
-// (melody + bassline + kick/snare/hihat) - a steady calm groove for most of
-// the run, and a fast intense tier that only kicks in for the final
-// countdown. Bouncy synth-arpeggio feel in the spirit of Tetris Attack's
-// puzzle-music style, but wholly original notes/rhythm - not a
+// --- in-play Blitz music: two original, looping "stealth-thriller" ambient
+// tiers - a sparse minor-key drone with a soft resting-heartbeat pulse and
+// an occasional plucked motif underneath, meant to stay unobtrusive and
+// support focus/thinking rather than compete for attention. The intense
+// tier (final countdown only) keeps the same instruments/motif but races
+// the pulse, bends the drone upward, and swaps in a dissonant tritone pluck
+// interval to raise tension as time runs out. Original composition, not a
 // reproduction of any existing game's music. ---
 const NOTE = {
+  A2: 110.0,
   C3: 130.81,
   D3: 146.83,
   E3: 164.81,
@@ -169,6 +172,7 @@ const NOTE = {
   B3: 246.94,
   C4: 261.63,
   D4: 293.66,
+  Ds4: 311.13,
   E4: 329.63,
   F4: 349.23,
   G4: 392.0,
@@ -183,109 +187,73 @@ function note(freq, seconds, opts) {
   return tone(freq, freq, seconds, opts);
 }
 
-// White-noise burst (envelope-shaped) - used for hi-hats/snares, since this
-// generator has no real percussion samples.
-function noiseHit(seconds, { attack = 0.001, decayPow = 3, volume = 0.4, seed = 1 } = {}) {
-  const n = Math.round(seconds * SAMPLE_RATE);
-  const env = envelope(n, Math.round(attack * n), decayPow);
-  const out = new Array(n);
-  let s = (seed * 2654435761) >>> 0;
-  for (let i = 0; i < n; i++) {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    const r = (s / 0xffffffff) * 2 - 1;
-    out[i] = r * env[i] * volume;
-  }
-  return out;
+// Concatenates `parts` then pads (or trims) with silence to exactly
+// `totalSeconds`, so every layer of a loop lines up sample-for-sample and
+// the loop repeats without a seam.
+function padTo(totalSeconds, ...parts) {
+  const combined = concat(...parts);
+  const targetN = Math.round(totalSeconds * SAMPLE_RATE);
+  if (combined.length >= targetN) return combined.slice(0, targetN);
+  return combined.concat(silence((targetN - combined.length) / SAMPLE_RATE));
 }
 
-function kickHit(seconds, volume = 0.5) {
-  return tone(160, 45, seconds, { wave: 'sine', attack: 0.002, decayPow: 1.6, volume });
+// A soft low double-thump ("lub-dub") like a resting heartbeat - the
+// tension pulse under both music tiers.
+function heartbeat(seconds, volume = 0.3) {
+  return padTo(
+    seconds,
+    tone(90, 55, seconds * 0.16, { wave: 'sine', attack: 0.002, decayPow: 1.4, volume }),
+    silence(seconds * 0.1),
+    tone(80, 48, seconds * 0.14, { wave: 'sine', attack: 0.002, decayPow: 1.4, volume: volume * 0.85 })
+  );
 }
 
-// Builds one bar-loop of `steps.length` equal-length steps by layering a
-// melody line, a bassline, and a simple drum pattern (kick/snare/hat), all
-// sharing the same step grid so the mixed track loops cleanly.
-function buildLoop({ step, melody, bass, kicks, snares, hats, opts = {} }) {
-  const {
-    melodyWave = 'triangle',
-    bassWave = 'sine',
-    melodyVolume = 0.3,
-    bassVolume = 0.28,
-    kickVolume = 0.5,
-    snareVolume = 0.32,
-    hatVolume = 0.14,
-  } = opts;
-  const steps = melody.length;
-
-  const melodyTrack = concat(
-    ...melody.map((f) =>
-      f ? note(f, step, { wave: melodyWave, attack: 0.008, decayPow: 1.6, volume: melodyVolume }) : silence(step)
-    )
-  );
-  const bassTrack = concat(
-    ...bass.map((f) =>
-      f ? note(f, step, { wave: bassWave, attack: 0.004, decayPow: 1.9, volume: bassVolume }) : silence(step)
-    )
-  );
-  const drumTrack = concat(
-    ...Array.from({ length: steps }, (_, i) => {
-      let layer = silence(step);
-      if (kicks.includes(i)) layer = mix(layer, kickHit(step, kickVolume));
-      if (snares.includes(i)) layer = mix(layer, noiseHit(step, { decayPow: 2.4, volume: snareVolume, seed: 7 }));
-      if (hats.includes(i)) layer = mix(layer, noiseHit(step, { decayPow: 4.5, volume: hatVolume, seed: 3 }));
-      return layer;
-    })
-  );
-
-  return mix(melodyTrack, bassTrack, drumTrack);
+// A short, quiet plucked note - the sparse "thinking" motif.
+function pluck(freq, seconds, volume = 0.2) {
+  return note(freq, seconds, { wave: 'triangle', attack: 0.004, decayPow: 2.6, volume });
 }
 
-const { C3, D3, E3, F3, G3, A3, B3, C4, D4, E4, F4, G4, A4, B4, C5, D5, E5 } = NOTE;
-
-// calm: laid-back bounce, sparse hats, root-note bass on the downbeats.
+// calm: slow heartbeat, a quiet sustained low drone, and a sparse 3-note
+// plucked motif spread far apart - meant to sit in the background.
+const CALM_LOOP_SECONDS = 4;
 writeWav(
   'music_calm.wav',
-  buildLoop({
-    step: 0.155,
-    melody: [C4, E4, G4, E4, C4, E4, A4, G4, F4, A4, C5, A4, F4, G4, E4, D4],
-    bass: [C3, null, null, null, C3, null, null, null, F3, null, null, null, G3, null, null, null],
-    kicks: [0, 8],
-    snares: [4, 12],
-    hats: [0, 4, 8, 12],
-    opts: {
-      melodyWave: 'triangle',
-      bassWave: 'sine',
-      melodyVolume: 0.26,
-      bassVolume: 0.24,
-      kickVolume: 0.4,
-      snareVolume: 0.22,
-      hatVolume: 0.08,
-    },
-  })
+  mix(
+    tone(NOTE.A2, NOTE.A2, CALM_LOOP_SECONDS, { wave: 'sine', attack: 1.2, decayPow: 0.6, volume: 0.11 }),
+    concat(heartbeat(1, 0.26), heartbeat(1, 0.26), heartbeat(1, 0.26), heartbeat(1, 0.26)),
+    padTo(
+      CALM_LOOP_SECONDS,
+      silence(0.4),
+      pluck(NOTE.A3, 0.3, 0.18),
+      silence(1.3),
+      pluck(NOTE.C4, 0.3, 0.16),
+      silence(1.0),
+      pluck(NOTE.E4, 0.35, 0.17)
+    )
+  )
 );
 
-// intense: fast, syncopated, walking bass, hats on every 8th plus off-beat
-// snare accents - the "clock's almost out" push, only used in the final
-// countdown of a run.
+// intense: the same drone/pulse/pluck instruments, but the heartbeat races,
+// the drone bends upward, and the pluck swaps to a dissonant tritone - only
+// used in the final countdown of a run.
+const INTENSE_LOOP_SECONDS = 2;
 writeWav(
   'music_intense.wav',
-  buildLoop({
-    step: 0.1,
-    melody: [C5, G4, E5, G4, C5, D5, E5, D5, C5, A4, C5, E5, D5, B4, D5, G4],
-    bass: [C3, C3, null, E3, F3, F3, null, A3, G3, G3, null, B3, C3, C3, null, E3],
-    kicks: [0, 3, 6, 8, 11, 14],
-    snares: [4, 12],
-    hats: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    opts: {
-      melodyWave: 'square',
-      bassWave: 'square',
-      melodyVolume: 0.26,
-      bassVolume: 0.22,
-      kickVolume: 0.5,
-      snareVolume: 0.32,
-      hatVolume: 0.1,
-    },
-  })
+  mix(
+    tone(NOTE.A2, 132, INTENSE_LOOP_SECONDS, { wave: 'sine', attack: 0.3, decayPow: 0.3, volume: 0.15 }),
+    concat(heartbeat(0.5, 0.4), heartbeat(0.5, 0.4), heartbeat(0.5, 0.4), heartbeat(0.5, 0.4)),
+    padTo(
+      INTENSE_LOOP_SECONDS,
+      silence(0.15),
+      pluck(NOTE.A3, 0.16, 0.24),
+      silence(0.24),
+      pluck(NOTE.Ds4, 0.16, 0.26),
+      silence(0.24),
+      pluck(NOTE.A3, 0.16, 0.24),
+      silence(0.24),
+      pluck(NOTE.Ds4, 0.16, 0.28)
+    )
+  )
 );
 
 // --- chain/combo escalation chimes: a bright, rising jingle that plays on
