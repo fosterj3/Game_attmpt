@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildBlitzLeaderboard, buildLeaderboard } from '../data/leaderboard';
 import { COLORS } from '../game/theme';
@@ -9,10 +9,26 @@ type Tab = 'stars' | 'blitz';
 export default function LeaderboardScreen() {
   const totalStars = usePlayerStore((s) => s.totalStars());
   const blitzBestScore = usePlayerStore((s) => s.blitzBestScore);
+  const lastSeenBlitzRank = usePlayerStore((s) => s.lastSeenBlitzRank);
+  const recordSeenBlitzRank = usePlayerStore((s) => s.recordSeenBlitzRank);
   const [tab, setTab] = useState<Tab>('stars');
 
   const entries = tab === 'stars' ? buildLeaderboard(totalStars) : buildBlitzLeaderboard(blitzBestScore);
   const unit = tab === 'stars' ? '⭐' : 'pts';
+  const playerIndex = entries.findIndex((e) => e.isPlayer);
+  const playerRank = playerIndex + 1;
+  const aboveEntry = playerIndex > 0 ? entries[playerIndex - 1] : null;
+
+  useEffect(() => {
+    if (tab !== 'blitz') return;
+    return () => {
+      recordSeenBlitzRank(playerRank);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const droppedRank =
+    tab === 'blitz' && lastSeenBlitzRank !== null && playerRank > lastSeenBlitzRank ? playerRank : null;
 
   return (
     <View style={styles.screen}>
@@ -26,6 +42,21 @@ export default function LeaderboardScreen() {
           <Text style={[styles.tabText, tab === 'blitz' && styles.tabTextActive]}>⏱ Blitz</Text>
         </Pressable>
       </View>
+
+      {tab === 'blitz' && droppedRank !== null && (
+        <View style={styles.callout}>
+          <Text style={styles.calloutText}>
+            {'📉'} You slipped to #{droppedRank} since you last checked - someone's catching up!
+          </Text>
+        </View>
+      )}
+      {tab === 'blitz' && droppedRank === null && aboveEntry && (
+        <View style={styles.callout}>
+          <Text style={styles.calloutText}>
+            {'🎯'} {Math.max(1, aboveEntry.value - blitzBestScore)} pts to pass {aboveEntry.name} for #{playerRank - 1}!
+          </Text>
+        </View>
+      )}
 
       <FlatList
         data={entries}
@@ -71,6 +102,13 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: COLORS.primary },
   tabText: { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
   tabTextActive: { color: COLORS.text },
+  callout: {
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+  },
+  calloutText: { color: COLORS.text, fontSize: 12, fontWeight: '600', textAlign: 'center' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -42,9 +42,28 @@ export function buildLeaderboard(playerStars: number): LeaderboardEntry[] {
   return entries.sort((a, b) => b.value - a.value);
 }
 
+function hashSeed(key: string): number {
+  let seed = 0;
+  for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) >>> 0;
+  return seed;
+}
+
+// Friends aren't actually static - they keep playing too. Each one drifts
+// upward slowly and at their own (deterministic, per-id) pace based on real
+// elapsed days, so the Blitz leaderboard feels alive across return visits
+// without needing a real backend or true randomness.
+function driftedValue(base: number, id: string): number {
+  const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const seed = hashSeed(id);
+  const dailyRate = 4 + (seed % 13); // 4-16 pts/day, stable per friend
+  const startDay = daysSinceEpoch - (seed % 30); // stagger when each friend "started" drifting
+  const daysActive = Math.max(0, daysSinceEpoch - startDay);
+  return base + daysActive * dailyRate;
+}
+
 export function buildBlitzLeaderboard(playerBestScore: number): LeaderboardEntry[] {
   const entries: LeaderboardEntry[] = [
-    ...BLITZ_FRIENDS,
+    ...BLITZ_FRIENDS.map((f) => ({ ...f, value: driftedValue(f.value, f.id) })),
     { id: 'me', name: 'You', value: playerBestScore, isPlayer: true },
   ];
   return entries.sort((a, b) => b.value - a.value);
