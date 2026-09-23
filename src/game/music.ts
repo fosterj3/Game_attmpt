@@ -32,6 +32,9 @@ export function startMusic(tier: MusicTier = 'calm') {
     currentTier = tier;
     p.replace(tracks[tier]);
     p.loop = true;
+    // .replace() can reset native player flags - always reassert mute state
+    // right after, or a muted player would audibly restart on every run.
+    p.muted = muted;
     p.play();
   } catch {
     // Ignore playback errors - music is a nice-to-have, never block gameplay.
@@ -46,6 +49,7 @@ export function setMusicTier(tier: MusicTier) {
     currentTier = tier;
     p.replace(tracks[tier]);
     p.loop = true;
+    p.muted = muted;
     if (wasPlaying) p.play();
   } catch {
     // ignore
@@ -74,7 +78,10 @@ export function pauseMusic() {
 
 export function resumeMusic() {
   try {
-    if (currentTier) player?.play();
+    if (currentTier && player) {
+      player.muted = muted;
+      player.play();
+    }
   } catch {
     // ignore
   }
