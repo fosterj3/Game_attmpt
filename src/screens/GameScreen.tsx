@@ -48,6 +48,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const chapter = getChapter(levelId);
   const spendLife = usePlayerStore((s) => s.spendLife);
   const completeLevel = usePlayerStore((s) => s.completeLevel);
+  const recordQuestProgress = usePlayerStore((s) => s.recordQuestProgress);
   const hasSeenHowToPlay = usePlayerStore((s) => s.hasSeenHowToPlay);
   const markHowToPlaySeen = usePlayerStore((s) => s.markHowToPlaySeen);
   const activeMode = usePlayerStore((s) => s.activeMode);
@@ -164,6 +165,7 @@ export default function GameScreen({ route, navigation }: Props) {
     const stars = starsForScore(finalScore, level);
     const { coinsEarned, bonusCoins } = completeLevel(level.id, finalScore, stars, movesRemaining);
     const won = stars > 0;
+    if (won) recordQuestProgress('completeLevel', 1);
     playSound(won ? 'win' : 'lose');
     Haptics.notificationAsync(
       won ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
@@ -203,6 +205,8 @@ export default function GameScreen({ route, navigation }: Props) {
       playSound(cascadeIndex > 0 ? 'combo' : 'pop');
       const chainTier = chainTierFor(matches.length, cascadeIndex);
       if (chainTier > 0) playSound(`chain${chainTier}` as SoundName);
+      if (matches.length >= 4) recordQuestProgress('clearBigMatch', 1);
+      if (cascadeIndex >= 1) recordQuestProgress('chainCombo', 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await delay(180);
 

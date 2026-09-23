@@ -1,6 +1,8 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import DailyChestCard from '../components/DailyChestCard';
+import DailyQuestsCard from '../components/DailyQuestsCard';
 import HowToPlayModal from '../components/HowToPlayModal';
 import LivesBadge from '../components/LivesBadge';
 import StreakBanner from '../components/StreakBanner';
@@ -51,6 +53,8 @@ export default function HomeScreen({ navigation }: Props) {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <StreakBanner />
+        <DailyChestCard />
+        <DailyQuestsCard />
 
         <Pressable style={styles.leaderboardLink} onPress={() => navigation.navigate('Leaderboard')}>
           <Text style={styles.leaderboardLinkText}>{'🏅'} See how you rank among friends</Text>

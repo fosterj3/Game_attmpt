@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { getBlitzRank } from '../data/leaderboard';
 import { LEVELS, getLevel } from '../data/levels';
+import { QuestId, getQuestDef, pickDailyQuestIds } from '../data/quests';
 import { BoostId, getBoost } from '../data/shop';
 
 const STORAGE_KEY = 'match3.player.v1';
@@ -18,7 +19,14 @@ export const BLITZ_TOP3_COINS = 500;
 export const BLITZ_FIRST_PLACE_COINS = 1000;
 export const HEART_PRICE_COINS = 10000;
 
+// Weighted-by-repetition reward table for the daily mystery chest - mostly
+// modest payouts with an occasional big jackpot, so opening it stays a
+// small surprise rather than a predictable fixed amount.
+export const DAILY_CHEST_REWARDS = [20, 20, 30, 30, 40, 50, 50, 75, 100, 250];
+
 export type GameMode = 'arcade' | 'story';
+
+export type QuestProgress = { progress: number; claimed: boolean };
 
 export type BlitzRunResult = {
   coinsEarned: number;
@@ -46,7 +54,12 @@ type PlayerState = {
   activeMode: GameMode | null;
   blitzBestScore: number;
   bestBlitzRankAchieved: number | null;
+  lastSeenBlitzRank: number | null;
   inventory: Record<BoostId, number>;
+  dailyQuestDate: string | null;
+  dailyQuestIds: QuestId[];
+  dailyQuests: Partial<Record<QuestId, QuestProgress>>;
+  lastChestOpenedDate: string | null;
 
   hydrate: () => Promise<void>;
   recordDailyPlay: () => void;
@@ -67,6 +80,12 @@ type PlayerState = {
   purchaseBoost: (id: BoostId) => boolean;
   consumeBoost: (id: BoostId) => boolean;
   purchaseHeart: () => boolean;
+  ensureDailyQuests: () => void;
+  recordQuestProgress: (id: QuestId, amount: number) => void;
+  claimQuest: (id: QuestId) => number;
+  canOpenDailyChest: () => boolean;
+  openDailyChest: () => number;
+  recordSeenBlitzRank: (rank: number) => void;
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -86,6 +105,12 @@ async function persist(state: Partial<PlayerState>) {
     purchaseBoost,
     consumeBoost,
     purchaseHeart,
+    ensureDailyQuests,
+    recordQuestProgress,
+    claimQuest,
+    canOpenDailyChest,
+    openDailyChest,
+    recordSeenBlitzRank,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -115,7 +140,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   activeMode: null,
   blitzBestScore: 0,
   bestBlitzRankAchieved: null,
+  lastSeenBlitzRank: null,
   inventory: { hint: 0, extraMoves: 0, freezeTime: 0 },
+  dailyQuestDate: null,
+  dailyQuestIds: [],
+  dailyQuests: {},
+  lastChestOpenedDate: null,
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -127,6 +157,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     get().regenLivesIfDue();
     get().recordDailyPlay();
+    get().ensureDailyQuests();
   },
 
   recordDailyPlay: () => {
@@ -329,5 +360,62 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set(next);
     persist({ ...get(), ...next });
     return true;
+  },
+
+  ensureDailyQuests: () => {
+    const today = todayString();
+    const { dailyQuestDate } = get();
+    if (dailyQuestDate === today) return;
+    const ids = pickDailyQuestIds(today);
+    const quests: Partial<Record<QuestId, QuestProgress>> = {};
+    for (const id of ids) quests[id] = { progress: 0, claimed: false };
+    const next = { dailyQuestDate: today, dailyQuestIds: ids, dailyQuests: quests };
+    set(next);
+    persist({ ...get(), ...next });
+  },
+
+  recordQuestProgress: (id, amount) => {
+    const { dailyQuestIds, dailyQuests } = get();
+    if (!dailyQuestIds.includes(id)) return;
+    const existing = dailyQuests[id];
+    if (!existing || existing.claimed) return;
+    const def = getQuestDef(id);
+    const nextProgress =
+      def.mode === 'max' ? Math.max(existing.progress, amount) : existing.progress + amount;
+    const next = {
+      dailyQuests: { ...dailyQuests, [id]: { ...existing, progress: Math.min(def.target, nextProgress) } },
+    };
+    set(next);
+    persist({ ...get(), ...next });
+  },
+
+  claimQuest: (id) => {
+    const { dailyQuests, coins } = get();
+    const existing = dailyQuests[id];
+    const def = getQuestDef(id);
+    if (!existing || existing.claimed || existing.progress < def.target) return 0;
+    const next = {
+      dailyQuests: { ...dailyQuests, [id]: { ...existing, claimed: true } },
+      coins: coins + def.reward,
+    };
+    set(next);
+    persist({ ...get(), ...next });
+    return def.reward;
+  },
+
+  canOpenDailyChest: () => get().lastChestOpenedDate !== todayString(),
+
+  openDailyChest: () => {
+    if (!get().canOpenDailyChest()) return 0;
+    const reward = DAILY_CHEST_REWARDS[Math.floor(Math.random() * DAILY_CHEST_REWARDS.length)];
+    const next = { lastChestOpenedDate: todayString(), coins: get().coins + reward };
+    set(next);
+    persist({ ...get(), ...next });
+    return reward;
+  },
+
+  recordSeenBlitzRank: (rank) => {
+    set({ lastSeenBlitzRank: rank });
+    persist({ ...get(), lastSeenBlitzRank: rank });
   },
 }));

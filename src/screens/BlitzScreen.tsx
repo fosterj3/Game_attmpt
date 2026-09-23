@@ -49,6 +49,7 @@ function delay(ms: number) {
 export default function BlitzScreen({ navigation }: Props) {
   const blitzBestScore = usePlayerStore((s) => s.blitzBestScore);
   const completeBlitzRun = usePlayerStore((s) => s.completeBlitzRun);
+  const recordQuestProgress = usePlayerStore((s) => s.recordQuestProgress);
 
   const [board, setBoard] = useState<Board>(() => generateBoard());
   const [selected, setSelected] = useState<Position | null>(null);
@@ -223,6 +224,8 @@ export default function BlitzScreen({ navigation }: Props) {
     const total = scoreRef.current;
     setFinalScore(total);
     const result = completeBlitzRun(total);
+    recordQuestProgress('playBlitzRuns', 1);
+    recordQuestProgress('blitzScore', total);
     setIsNewBest(result.isNewBest);
     setRunReward({ coinsEarned: result.coinsEarned, rank: result.rank, milestones: result.milestones });
     const bigWin = result.isNewBest || result.milestones.top10 || result.milestones.top3 || result.milestones.first;
@@ -250,6 +253,8 @@ export default function BlitzScreen({ navigation }: Props) {
       playSound(cascadeIndex > 0 ? 'combo' : 'pop');
       const chainTier = chainTierFor(matches.length, cascadeIndex);
       if (chainTier > 0) playSound(`chain${chainTier}` as SoundName);
+      if (matches.length >= 4) recordQuestProgress('clearBigMatch', 1);
+      if (cascadeIndex >= 1) recordQuestProgress('chainCombo', 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await delay(150);
 
@@ -306,6 +311,7 @@ export default function BlitzScreen({ navigation }: Props) {
     if (justIgnited) {
       fireActiveRef.current = true;
       setFireActive(true);
+      recordQuestProgress('igniteFire', 1);
     }
 
     setBusy(true);
