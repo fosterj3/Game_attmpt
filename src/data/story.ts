@@ -18,6 +18,7 @@ const CAST = {
   bram: { speaker: 'Bram', portrait: '🎒', tint: '#FFB84C' },
   isolde: { speaker: 'Captain Isolde', portrait: '🛡️', tint: '#4CD97B' },
   kaelen: { speaker: 'Kaelen the Unmaker', portrait: '🌑', tint: '#FF5E5B' },
+  ember: { speaker: 'Ember', portrait: '🔥', tint: '#FF8A3D' },
 } as const;
 
 function say(who: (typeof CAST)[keyof typeof CAST], text: string): DialogueLine {
@@ -154,6 +155,68 @@ export const STORY_CHAPTERS: Record<number, StoryChapter> = {
       say(CAST.lyra, "It's not too late to remember, Kaelen."),
       say(CAST.orin, "You didn't just save the Prism today, Lyra. You may have saved him too."),
       say(CAST.lyra, 'The Cascade Kingdom is safe... for now.'),
+    ],
+  },
+  11: {
+    levelId: 11,
+    title: 'Chapter 11: Embers of the Unmaking',
+    before: [
+      say(CAST.orin, "Lyra, the wells you stabilized... they're flickering again."),
+      say(CAST.lyra, "That's not possible, I—"),
+      say(CAST.kaelen, "It's not you. It's what's left of me."),
+    ],
+    after: [
+      say(CAST.kaelen, 'The remnants remember only what I was, not what I have chosen to be now.'),
+      say(CAST.lyra, 'Then help me remind them.'),
+    ],
+  },
+  12: {
+    levelId: 12,
+    title: 'Chapter 12: The Ember Scout',
+    before: [
+      say(CAST.isolde, 'Reports of a lone Shardweaver siphoning wild remnants near the Shard Road.'),
+      say(CAST.bram, 'Copycat prodigy? Great, more competition.'),
+    ],
+    after: [
+      say(CAST.ember, "I'm not your enemy. I'm trying to stop them from doing what Kaelen did."),
+      say(CAST.lyra, 'Then work with us instead of alone.'),
+    ],
+  },
+  13: {
+    levelId: 13,
+    title: 'Chapter 13: Two Shardweavers',
+    before: [
+      say(CAST.ember, "You match tiles like it's a game. I match them like it's survival."),
+      say(CAST.lyra, 'Maybe it can be both.'),
+    ],
+    after: [
+      say(CAST.ember, "...Fine. You're better than the stories say. Don't make me regret this."),
+    ],
+  },
+  14: {
+    levelId: 14,
+    title: 'Chapter 14: The Remnant Heart',
+    before: [
+      say(CAST.kaelen, "That's the heart of what I used to be. If it reforms, it won't listen to reason - not even mine."),
+      say(CAST.lyra, "Then we don't let it reform."),
+    ],
+    after: [
+      say(CAST.ember, "I've never seen a cascade like that. What was that?"),
+      say(CAST.lyra, "Everything Orin taught me. And a little of what you taught me too."),
+    ],
+  },
+  15: {
+    levelId: 15,
+    title: 'Chapter 15: What Remains',
+    before: [
+      say(CAST.kaelen, 'Whatever happens up there - thank you. For not giving up on what I could still become.'),
+      say(CAST.lyra, "Let's finish it. Together, this time."),
+    ],
+    after: [
+      say(CAST.orin, 'The remnants are quiet. Truly quiet, this time.'),
+      say(CAST.kaelen, "I'll keep watch over what's left of me. You've more than earned some peace, Lyra."),
+      say(CAST.ember, '...Teach me? Properly, this time.'),
+      say(CAST.lyra, "Deal. Welcome to the chaos."),
     ],
   },
 };

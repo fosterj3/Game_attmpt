@@ -10,6 +10,7 @@ export const TITLES: Title[] = [
   { minStars: 25, name: 'Board Master', emoji: '🏆' },
   { minStars: 50, name: 'Cascade Legend', emoji: '👑' },
   { minStars: 100, name: 'Grandmaster', emoji: '💎' },
+  { minStars: 200, name: 'Mythic', emoji: '🌌' },
 ];
 
 export function titleForStars(stars: number): Title {
