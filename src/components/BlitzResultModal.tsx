@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../game/theme';
+import { shareText } from '../game/share';
 
 type Milestones = { top10: boolean; top3: boolean; first: boolean } | null;
 
@@ -33,6 +34,18 @@ export default function BlitzResultModal({
   const grand = isNewBest || hasMilestone;
   const trophyBounce = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
+  const [shareStatus, setShareStatus] = useState<'idle' | 'shared' | 'copied'>('idle');
+
+  const handleShare = async () => {
+    const outcome = await shareText(
+      `I just scored ${score} pts in Cascade Quest's Blitz mode! Can you beat me? https://cascade-quest.expo.app`
+    );
+    if (outcome === 'shared' || outcome === 'copied') setShareStatus(outcome);
+  };
+
+  useEffect(() => {
+    if (visible) setShareStatus('idle');
+  }, [visible]);
 
   useEffect(() => {
     if (!visible || !grand) return;
@@ -90,6 +103,12 @@ export default function BlitzResultModal({
               {milestones?.first && <Text style={styles.milestoneLine}>{'👑'} First time #1! +1000</Text>}
             </View>
           )}
+
+          <Pressable style={styles.shareButton} onPress={handleShare}>
+            <Text style={styles.shareButtonText}>
+              {shareStatus === 'shared' ? 'Shared!' : shareStatus === 'copied' ? 'Copied to clipboard!' : '🔗 Share score'}
+            </Text>
+          </Pressable>
 
           <View style={styles.buttonRow}>
             <Pressable style={[styles.button, styles.secondaryButton]} onPress={onDone}>
@@ -150,6 +169,14 @@ const styles = StyleSheet.create({
   rewardLine: { color: COLORS.accent, fontWeight: '800', fontSize: 16 },
   rewardBreakdown: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
   milestoneLine: { color: '#FFE066', fontWeight: '700', fontSize: 12, marginTop: 4 },
+  shareButton: {
+    marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  shareButtonText: { color: COLORS.text, fontWeight: '700', fontSize: 13 },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 18, width: '100%' },
   button: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   primaryButton: { backgroundColor: COLORS.primary },
