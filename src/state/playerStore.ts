@@ -139,7 +139,14 @@ async function persist(state: Partial<PlayerState>) {
 }
 
 function todayString(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Local calendar date, not UTC - toISOString() would flip to the next
+  // (or previous) day near local midnight for any timezone ahead of/behind
+  // UTC, which broke the streak for players not in UTC.
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function daysBetween(a: string, b: string): number {

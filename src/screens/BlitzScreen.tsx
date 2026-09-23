@@ -81,6 +81,7 @@ export default function BlitzScreen({ navigation }: Props) {
 
   const swapProgress = useRef(new Animated.Value(0)).current;
   const scoreRef = useRef(0);
+  const busyRef = useRef(false);
   const streakRef = useRef(0);
   const lastMatchAtRef = useRef<number | null>(null);
   const fireActiveRef = useRef(false);
@@ -90,6 +91,10 @@ export default function BlitzScreen({ navigation }: Props) {
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   useEffect(() => {
     if (!started || finished || paused) return;
@@ -148,10 +153,23 @@ export default function BlitzScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (started && !finished && timeLeft === 0) {
-      finishRun();
+      handleTimeUp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
+
+  // A move made in the closing instant can still be mid-cascade when the
+  // clock hits 0 - wait for it to fully resolve (so its points count),
+  // then hold on the frozen board for a beat before showing results. This
+  // also stops a tap aimed at the board from accidentally landing on the
+  // result modal's buttons the moment they appear.
+  const handleTimeUp = async () => {
+    while (busyRef.current) {
+      await delay(100);
+    }
+    await delay(1000);
+    finishRun();
+  };
 
   // Auto-pause when the app/tab loses focus (backgrounded, tab switched,
   // etc.) so players can't be timed out by something outside the game.
@@ -280,7 +298,7 @@ export default function BlitzScreen({ navigation }: Props) {
   };
 
   const onTilePress = (pos: Position) => {
-    if (!started || busy || finished || igniting || paused) return;
+    if (!started || busy || finished || igniting || paused || timeLeft <= 0) return;
     lastActionAtRef.current = Date.now();
     setHint(null);
     if (!selected) {
