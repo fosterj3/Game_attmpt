@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 type WagerResult = {
   heartsDelta: number;
@@ -32,6 +32,8 @@ export default function LevelResultModal({
   onContinue,
   onRetry,
 }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onContinue}>
       <View style={styles.overlay}>
@@ -88,7 +90,8 @@ export default function LevelResultModal({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -134,4 +137,5 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: COLORS.primary },
   secondaryButton: { backgroundColor: COLORS.surfaceLight },
   buttonText: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
-});
+  });
+}

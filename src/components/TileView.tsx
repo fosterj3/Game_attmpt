@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet } from 'react-native';
-import { COLORS, TILE_COLORS } from '../game/theme';
+import { useColors, ColorScheme, TILE_COLORS } from '../game/theme';
 
 type SwapAnim = {
   progress: Animated.Value;
@@ -29,6 +29,8 @@ export default function TileView({
   swapAnim = null,
   hinted = false,
 }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const scale = useRef(new Animated.Value(0.6)).current;
   const fallY = useRef(new Animated.Value(-size * 1.2)).current;
   const popScale = useRef(new Animated.Value(1)).current;
@@ -109,7 +111,8 @@ export default function TileView({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   tile: {
     flex: 1,
     borderRadius: 12,
@@ -125,4 +128,5 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.accent,
   },
-});
+  });
+}

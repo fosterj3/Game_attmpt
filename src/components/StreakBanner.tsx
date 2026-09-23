@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { usePlayerStore } from '../state/playerStore';
 
 const MILESTONES = [3, 7, 14, 30];
 
 export default function StreakBanner() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const currentStreak = usePlayerStore((s) => s.currentStreak);
   const nextMilestone = MILESTONES.find((m) => m > currentStreak) ?? currentStreak + 7;
 
@@ -22,7 +24,8 @@ export default function StreakBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -44,4 +47,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-});
+  });
+}

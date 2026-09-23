@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 type Props = {
   visible: boolean;
@@ -9,6 +9,8 @@ type Props = {
 };
 
 export default function BlitzPauseOverlay({ visible, onResume, onQuit }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onResume}>
       <View style={styles.overlay}>
@@ -31,7 +33,8 @@ export default function BlitzPauseOverlay({ visible, onResume, onQuit }: Props) 
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -53,4 +56,5 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: COLORS.primary },
   secondaryButton: { backgroundColor: COLORS.surfaceLight },
   buttonText: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
-});
+  });
+}

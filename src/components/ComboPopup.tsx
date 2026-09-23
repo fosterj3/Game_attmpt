@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 export type ComboEvent = {
   id: number;
@@ -13,6 +13,8 @@ type Props = {
 };
 
 export default function ComboPopup({ event }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.7)).current;
@@ -48,7 +50,8 @@ export default function ComboPopup({ event }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   wrap: {
     position: 'absolute',
     top: '30%',
@@ -73,4 +76,5 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowRadius: 6,
   },
-});
+  });
+}

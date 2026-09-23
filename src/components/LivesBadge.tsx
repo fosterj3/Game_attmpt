@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { LIFE_REGEN_MINUTES, MAX_LIVES, usePlayerStore } from '../state/playerStore';
 
 function formatCountdown(msRemaining: number): string {
@@ -11,6 +11,8 @@ function formatCountdown(msRemaining: number): string {
 }
 
 export default function LivesBadge() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const lives = usePlayerStore((s) => s.lives);
   const lastLifeLostAt = usePlayerStore((s) => s.lastLifeLostAt);
   const regenLivesIfDue = usePlayerStore((s) => s.regenLivesIfDue);
@@ -40,7 +42,8 @@ export default function LivesBadge() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -62,4 +65,5 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 12,
   },
-});
+  });
+}

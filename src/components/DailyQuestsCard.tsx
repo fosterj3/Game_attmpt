@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { getQuestDef } from '../data/quests';
 import { playSound } from '../game/sound';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { usePlayerStore } from '../state/playerStore';
 
 export default function DailyQuestsCard() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const dailyQuestIds = usePlayerStore((s) => s.dailyQuestIds);
   const dailyQuests = usePlayerStore((s) => s.dailyQuests);
   const claimQuest = usePlayerStore((s) => s.claimQuest);
@@ -54,7 +56,8 @@ export default function DailyQuestsCard() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   container: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -84,4 +87,5 @@ const styles = StyleSheet.create({
   claimButtonText: { color: COLORS.background, fontWeight: '800', fontSize: 12 },
   claimedText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '700' },
   rewardText: { color: COLORS.accent, fontSize: 11, fontWeight: '700' },
-});
+  });
+}

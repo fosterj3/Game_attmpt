@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { shareText } from '../game/share';
 
 type Milestones = { top10: boolean; top3: boolean; first: boolean } | null;
@@ -30,6 +30,8 @@ export default function BlitzResultModal({
   onPlayAgain,
   onDone,
 }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const hasMilestone = !!(milestones && (milestones.top10 || milestones.top3 || milestones.first));
   const grand = isNewBest || hasMilestone;
   const trophyBounce = useRef(new Animated.Value(0)).current;
@@ -124,7 +126,8 @@ export default function BlitzResultModal({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -182,4 +185,5 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: COLORS.primary },
   secondaryButton: { backgroundColor: COLORS.surfaceLight },
   buttonText: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
-});
+  });
+}

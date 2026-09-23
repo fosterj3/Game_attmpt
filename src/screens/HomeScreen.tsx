@@ -1,28 +1,29 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DailyChestCard from '../components/DailyChestCard';
 import DailyQuestsCard from '../components/DailyQuestsCard';
 import HowToPlayModal from '../components/HowToPlayModal';
 import LivesBadge from '../components/LivesBadge';
 import StreakBanner from '../components/StreakBanner';
-import { LEVELS } from '../data/levels';
+import { LEVELS, getEffectiveLevel } from '../data/levels';
 import { getChapter } from '../data/story';
 import { titleForStars } from '../data/titles';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { RootStackParamList } from '../navigation/types';
 import { usePlayerStore } from '../state/playerStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const unlockedLevelId = usePlayerStore((s) => s.unlockedLevelId);
   const levelProgress = usePlayerStore((s) => s.levelProgress);
   const coins = usePlayerStore((s) => s.coins);
   const lives = usePlayerStore((s) => s.lives);
   const totalStars = usePlayerStore((s) => s.totalStars());
-  const soundEnabled = usePlayerStore((s) => s.soundEnabled);
-  const setSoundEnabled = usePlayerStore((s) => s.setSoundEnabled);
+  const difficulty = usePlayerStore((s) => s.difficulty);
   const activeMode = usePlayerStore((s) => s.activeMode);
   const title = titleForStars(totalStars);
   const [howToPlayVisible, setHowToPlayVisible] = useState(false);
@@ -45,8 +46,8 @@ export default function HomeScreen({ navigation }: Props) {
         <Pressable onPress={() => setHowToPlayVisible(true)} style={styles.iconChip} hitSlop={8}>
           <Text style={styles.iconChipText}>{'?'}</Text>
         </Pressable>
-        <Pressable onPress={() => setSoundEnabled(!soundEnabled)} style={styles.iconChip} hitSlop={8}>
-          <Text style={styles.iconChipText}>{soundEnabled ? '🔊' : '🔇'}</Text>
+        <Pressable onPress={() => navigation.navigate('Settings')} style={styles.iconChip} hitSlop={8}>
+          <Text style={styles.iconChipText}>{'⚙️'}</Text>
         </Pressable>
         <LivesBadge />
       </View>
@@ -77,7 +78,8 @@ export default function HomeScreen({ navigation }: Props) {
             chapter, he'll offer a wager: risk 2 hearts for a chance to win 2 more.
           </Text>
         )}
-        {LEVELS.map((level) => {
+        {LEVELS.map((baseLevel) => {
+          const level = getEffectiveLevel(baseLevel.id, difficulty)!;
           const locked = level.id > unlockedLevelId;
           const progress = levelProgress[level.id];
           const chapter = getChapter(level.id);
@@ -112,7 +114,8 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -221,4 +224,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-});
+  });
+}

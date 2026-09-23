@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DialogueLine } from '../data/story';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 type Props = {
   visible: boolean;
@@ -11,6 +11,8 @@ type Props = {
 };
 
 export default function DialogueModal({ visible, chapterTitle, lines, onDone }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const [index, setIndex] = useState(0);
   const line = lines[index];
 
@@ -44,7 +46,8 @@ export default function DialogueModal({ visible, chapterTitle, lines, onDone }: 
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -71,4 +74,5 @@ const styles = StyleSheet.create({
   speakerName: { fontWeight: '800', fontSize: 15 },
   text: { color: COLORS.text, fontSize: 15, lineHeight: 21 },
   tapHint: { color: COLORS.textMuted, fontSize: 11, alignSelf: 'flex-end', marginTop: 4 },
-});
+  });
+}

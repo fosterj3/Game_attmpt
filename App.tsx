@@ -14,6 +14,8 @@ export default function App() {
   const hydrate = usePlayerStore((s) => s.hydrate);
   const hydrated = usePlayerStore((s) => s.hydrated);
   const soundEnabled = usePlayerStore((s) => s.soundEnabled);
+  const musicEnabled = usePlayerStore((s) => s.musicEnabled);
+  const themeMode = usePlayerStore((s) => s.themeMode);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -22,8 +24,11 @@ export default function App() {
 
   useEffect(() => {
     setMuted(!soundEnabled);
-    setMusicMuted(!soundEnabled);
   }, [soundEnabled]);
+
+  useEffect(() => {
+    setMusicMuted(!musicEnabled);
+  }, [musicEnabled]);
 
   if (!ready || !hydrated) {
     return (
@@ -37,7 +42,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <RootNavigator />
-        <StatusBar style="light" />
+        <StatusBar style={themeMode === 'light' ? 'dark' : 'light'} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

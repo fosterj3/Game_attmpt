@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import BoardView from '../components/BoardView';
 import ComboPopup, { ComboEvent } from '../components/ComboPopup';
@@ -9,7 +9,7 @@ import HowToPlayModal from '../components/HowToPlayModal';
 import InfoModal from '../components/InfoModal';
 import LevelResultModal from '../components/LevelResultModal';
 import WagerModal from '../components/WagerModal';
-import { getLevel, starsForScore } from '../data/levels';
+import { getEffectiveLevel, starsForScore } from '../data/levels';
 import { getChapter } from '../data/story';
 import {
   clearMatches,
@@ -23,7 +23,7 @@ import {
 } from '../game/board';
 import { chainTierFor, getComboMessage } from '../game/combo';
 import { playSound, SoundName } from '../game/sound';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { Board, Position } from '../game/types';
 import { RootStackParamList } from '../navigation/types';
 import { usePlayerStore } from '../state/playerStore';
@@ -43,8 +43,11 @@ function formatTime(totalSeconds: number): string {
 }
 
 export default function GameScreen({ route, navigation }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { levelId } = route.params;
-  const level = getLevel(levelId)!;
+  const difficulty = usePlayerStore((s) => s.difficulty);
+  const level = getEffectiveLevel(levelId, difficulty)!;
   const chapter = getChapter(levelId);
   const spendLife = usePlayerStore((s) => s.spendLife);
   const completeLevel = usePlayerStore((s) => s.completeLevel);
@@ -432,7 +435,8 @@ export default function GameScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -519,4 +523,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-});
+  });
+}

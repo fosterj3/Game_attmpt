@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text } from 'react-native';
-import { COLORS } from '../game/theme';
 
 type Props = {
   active: boolean;

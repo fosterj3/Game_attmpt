@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 type Props = {
   visible: boolean;
@@ -36,6 +36,8 @@ const STEPS: { emoji: string; title: string; body: string }[] = [
 ];
 
 export default function HowToPlayModal({ visible, onClose }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -61,7 +63,8 @@ export default function HowToPlayModal({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -95,4 +98,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: { color: COLORS.text, fontWeight: '800', fontSize: 16 },
-});
+  });
+}

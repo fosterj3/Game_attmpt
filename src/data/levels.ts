@@ -1,3 +1,4 @@
+import type { Difficulty } from '../state/playerStore';
 import { LevelGoal } from '../game/types';
 
 export type LevelDef = LevelGoal & {
@@ -39,4 +40,34 @@ export function starsForScore(score: number, goal: LevelGoal): 0 | 1 | 2 | 3 {
 
 export function getLevel(id: number): LevelDef | undefined {
   return LEVELS.find((l) => l.id === id);
+}
+
+// LEVELS above is the "Medium" baseline. Easy/Hard scale moves, time, and
+// the score target from that same baseline rather than needing 3 separate
+// full level tables. Coin payout also scales with difficulty (see
+// DIFFICULTY_COIN_MULTIPLIER in playerStore.ts) so Hard is worth chasing
+// despite being harder to 3-star. titleStars/career-star totals and the
+// Stars leaderboard are intentionally difficulty-INDEPENDENT: any win
+// (1+ stars) awards the same titleStars regardless of difficulty, so
+// switching difficulty never inflates or deflates a player's career total
+// or their rank on the Stars leaderboard - only the in-run score/coin
+// numbers flex.
+const DIFFICULTY_MULTIPLIERS: Record<Difficulty, { moves: number; time: number; target: number }> = {
+  easy: { moves: 1.3, time: 1.3, target: 0.8 },
+  medium: { moves: 1, time: 1, target: 1 },
+  hard: { moves: 0.8, time: 0.8, target: 1.25 },
+};
+
+export function getEffectiveLevel(id: number, difficulty: Difficulty): LevelDef | undefined {
+  const base = getLevel(id);
+  if (!base) return undefined;
+  if (difficulty === 'medium') return base;
+  const m = DIFFICULTY_MULTIPLIERS[difficulty];
+  return {
+    ...base,
+    targetScore: Math.round((base.targetScore * m.target) / 50) * 50,
+    moveLimit: Math.max(5, Math.round(base.moveLimit * m.moves)),
+    timeLimitSeconds:
+      base.timeLimitSeconds != null ? Math.max(20, Math.round(base.timeLimitSeconds * m.time)) : undefined,
+  };
 }

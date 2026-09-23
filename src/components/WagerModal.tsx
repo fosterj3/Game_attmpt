@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { WAGER_HEARTS } from '../state/playerStore';
 
 type Props = {
@@ -11,6 +11,8 @@ type Props = {
 };
 
 export default function WagerModal({ visible, hearts, onAccept, onDecline }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onDecline}>
       <View style={styles.overlay}>
@@ -42,7 +44,8 @@ export default function WagerModal({ visible, hearts, onAccept, onDecline }: Pro
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -68,4 +71,5 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: COLORS.danger },
   secondaryButton: { backgroundColor: COLORS.surfaceLight },
   buttonText: { color: COLORS.text, fontWeight: '800', fontSize: 14 },
-});
+  });
+}

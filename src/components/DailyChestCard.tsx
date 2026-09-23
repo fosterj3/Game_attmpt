@@ -1,10 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { playSound } from '../game/sound';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { usePlayerStore } from '../state/playerStore';
 
 export default function DailyChestCard() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const canOpenDailyChest = usePlayerStore((s) => s.canOpenDailyChest());
   const openDailyChest = usePlayerStore((s) => s.openDailyChest);
   const [reward, setReward] = useState<number | null>(null);
@@ -43,7 +45,8 @@ export default function DailyChestCard() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   container: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -62,4 +65,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   openButtonText: { color: COLORS.background, fontWeight: '800', fontSize: 13 },
-});
+  });
+}

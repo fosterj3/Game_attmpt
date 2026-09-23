@@ -19,12 +19,25 @@ export const BLITZ_TOP3_COINS = 500;
 export const BLITZ_FIRST_PLACE_COINS = 1000;
 export const HEART_PRICE_COINS = 10000;
 
+// Hard mode is harder to 3-star (see getEffectiveLevel in data/levels.ts),
+// so its star-based coin payout is boosted to compensate; Easy is
+// discounted for the same reason in reverse. Career titleStars (and the
+// Stars leaderboard, which sums those) are NOT affected by difficulty at
+// all - only these in-run coin numbers flex.
+export const DIFFICULTY_COIN_MULTIPLIER: Record<Difficulty, number> = {
+  easy: 0.8,
+  medium: 1,
+  hard: 1.3,
+};
+
 // Weighted-by-repetition reward table for the daily mystery chest - mostly
 // modest payouts with an occasional big jackpot, so opening it stays a
 // small surprise rather than a predictable fixed amount.
 export const DAILY_CHEST_REWARDS = [20, 20, 30, 30, 40, 50, 50, 75, 100, 250];
 
 export type GameMode = 'arcade' | 'story';
+export type ThemeMode = 'dark' | 'light';
+export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export type QuestProgress = { progress: number; claimed: boolean };
 
@@ -51,6 +64,9 @@ type PlayerState = {
   unlockedLevelId: number;
   hasSeenHowToPlay: boolean;
   soundEnabled: boolean;
+  musicEnabled: boolean;
+  themeMode: ThemeMode;
+  difficulty: Difficulty;
   activeMode: GameMode | null;
   blitzBestScore: number;
   bestBlitzRankAchieved: number | null;
@@ -74,6 +90,9 @@ type PlayerState = {
   totalStars: () => number;
   markHowToPlaySeen: () => void;
   setSoundEnabled: (enabled: boolean) => void;
+  setMusicEnabled: (enabled: boolean) => void;
+  setThemeMode: (mode: ThemeMode) => void;
+  setDifficulty: (difficulty: Difficulty) => void;
   setMode: (mode: GameMode | null) => void;
   completeBlitzRun: (score: number) => BlitzRunResult;
   resolveWager: (won: boolean) => { heartsDelta: number; coinsBonus: number };
@@ -99,6 +118,9 @@ async function persist(state: Partial<PlayerState>) {
     totalStars,
     markHowToPlaySeen,
     setSoundEnabled,
+    setMusicEnabled,
+    setThemeMode,
+    setDifficulty,
     setMode,
     completeBlitzRun,
     resolveWager,
@@ -137,6 +159,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   unlockedLevelId: 1,
   hasSeenHowToPlay: false,
   soundEnabled: true,
+  musicEnabled: true,
+  themeMode: 'dark',
+  difficulty: 'medium',
   activeMode: null,
   blitzBestScore: 0,
   bestBlitzRankAchieved: null,
@@ -205,7 +230,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   completeLevel: (levelId, score, stars, movesRemaining = 0) => {
-    const { levelProgress, unlockedLevelId, coins } = get();
+    const { levelProgress, unlockedLevelId, coins, difficulty } = get();
     const existing = levelProgress[levelId];
     const improved = !existing || stars > existing.bestStars || score > existing.bestScore;
     const newProgress = improved
@@ -224,7 +249,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         : unlockedLevelId;
 
     const bonusCoins = stars > 0 ? movesRemaining * COINS_PER_LEFTOVER_MOVE : 0;
-    const coinsEarned = stars * 25 + bonusCoins;
+    const starCoins = Math.round(stars * 25 * DIFFICULTY_COIN_MULTIPLIER[difficulty]);
+    const coinsEarned = starCoins + bonusCoins;
     const next = {
       levelProgress: newProgress,
       unlockedLevelId: nextUnlocked,
@@ -254,6 +280,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setSoundEnabled: (enabled) => {
     set({ soundEnabled: enabled });
     persist({ ...get(), soundEnabled: enabled });
+  },
+
+  setMusicEnabled: (enabled) => {
+    set({ musicEnabled: enabled });
+    persist({ ...get(), musicEnabled: enabled });
+  },
+
+  setThemeMode: (mode) => {
+    set({ themeMode: mode });
+    persist({ ...get(), themeMode: mode });
+  },
+
+  setDifficulty: (difficulty) => {
+    set({ difficulty });
+    persist({ ...get(), difficulty });
   },
 
   setMode: (mode) => {

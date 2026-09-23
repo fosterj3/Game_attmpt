@@ -1,13 +1,15 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { RootStackParamList } from '../navigation/types';
 import { GameMode, usePlayerStore } from '../state/playerStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ModeSelect'>;
 
 export default function ModeSelectScreen({ navigation }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const setMode = usePlayerStore((s) => s.setMode);
   const activeMode = usePlayerStore((s) => s.activeMode);
 
@@ -46,7 +48,8 @@ export default function ModeSelectScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -70,4 +73,5 @@ const styles = StyleSheet.create({
   cardTitle: { color: COLORS.text, fontSize: 20, fontWeight: '800' },
   cardBody: { color: COLORS.textMuted, fontSize: 13, lineHeight: 19 },
   currentMode: { color: COLORS.textMuted, textAlign: 'center', marginTop: 8, fontSize: 12 },
-});
+  });
+}

@@ -6,4 +6,5 @@ export type RootStackParamList = {
   Leaderboard: undefined;
   Profile: undefined;
   Shop: undefined;
+  Settings: undefined;
 };

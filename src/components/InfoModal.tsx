@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 type Props = {
   visible: boolean;
@@ -11,6 +11,8 @@ type Props = {
 };
 
 export default function InfoModal({ visible, title, message, buttonLabel = 'OK', onClose }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -26,7 +28,8 @@ export default function InfoModal({ visible, title, message, buttonLabel = 'OK',
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -49,4 +52,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   buttonText: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
-});
+  });
+}

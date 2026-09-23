@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BOOSTS } from '../data/shop';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { HEART_PRICE_COINS, MAX_LIVES, usePlayerStore } from '../state/playerStore';
 
 export default function ShopScreen() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const coins = usePlayerStore((s) => s.coins);
   const lives = usePlayerStore((s) => s.lives);
   const inventory = usePlayerStore((s) => s.inventory);
@@ -66,7 +68,8 @@ export default function ShopScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
   title: { color: COLORS.text, fontSize: 26, fontWeight: '800' },
   coinsChip: {
@@ -104,4 +107,5 @@ const styles = StyleSheet.create({
   heartButton: { backgroundColor: COLORS.danger },
   buyButtonDisabled: { backgroundColor: COLORS.surfaceLight, opacity: 0.5 },
   buyButtonText: { color: COLORS.text, fontWeight: '800', fontSize: 14 },
-});
+  });
+}

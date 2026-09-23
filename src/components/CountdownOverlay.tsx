@@ -1,12 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 
 type Props = {
   value: number | 'GO' | null;
 };
 
 export default function CountdownOverlay({ value }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const scale = useRef(new Animated.Value(0.5)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -30,7 +32,8 @@ export default function CountdownOverlay({ value }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   wrap: {
     position: 'absolute',
     top: 0,
@@ -53,4 +56,5 @@ const styles = StyleSheet.create({
     textShadowRadius: 20,
     textShadowOffset: { width: 0, height: 0 },
   },
-});
+  });
+}

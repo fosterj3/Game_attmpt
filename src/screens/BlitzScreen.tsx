@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import BlitzPauseOverlay from '../components/BlitzPauseOverlay';
 import BlitzResultModal from '../components/BlitzResultModal';
@@ -22,7 +22,7 @@ import {
 import { chainTierFor, getComboMessage } from '../game/combo';
 import { startMusic, setMusicTier, stopMusic, pauseMusic, resumeMusic } from '../game/music';
 import { playSound, SoundName } from '../game/sound';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { Board, Position } from '../game/types';
 import { RootStackParamList } from '../navigation/types';
 import { usePlayerStore } from '../state/playerStore';
@@ -47,6 +47,8 @@ function delay(ms: number) {
 }
 
 export default function BlitzScreen({ navigation }: Props) {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const blitzBestScore = usePlayerStore((s) => s.blitzBestScore);
   const completeBlitzRun = usePlayerStore((s) => s.completeBlitzRun);
   const recordQuestProgress = usePlayerStore((s) => s.recordQuestProgress);
@@ -417,7 +419,8 @@ export default function BlitzScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -493,4 +496,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   startButtonText: { color: COLORS.text, fontWeight: '800', fontSize: 16 },
-});
+  });
+}

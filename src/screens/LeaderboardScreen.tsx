@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildBlitzLeaderboard, buildLeaderboard } from '../data/leaderboard';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { usePlayerStore } from '../state/playerStore';
 
 type Tab = 'stars' | 'blitz';
 
 export default function LeaderboardScreen() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const totalStars = usePlayerStore((s) => s.totalStars());
   const blitzBestScore = usePlayerStore((s) => s.blitzBestScore);
   const lastSeenBlitzRank = usePlayerStore((s) => s.lastSeenBlitzRank);
@@ -74,7 +76,8 @@ export default function LeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -126,4 +129,5 @@ const styles = StyleSheet.create({
   name: { color: COLORS.text, flex: 1, fontWeight: '600' },
   namePlayer: { color: COLORS.primary },
   value: { color: COLORS.accent, fontWeight: '700' },
-});
+  });
+}

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TITLES, titleForStars } from '../data/titles';
-import { COLORS } from '../game/theme';
+import { useColors, ColorScheme } from '../game/theme';
 import { usePlayerStore } from '../state/playerStore';
 
 export default function ProfileScreen() {
+  const COLORS = useColors();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const totalStars = usePlayerStore((s) => s.totalStars());
   const coins = usePlayerStore((s) => s.coins);
   const currentStreak = usePlayerStore((s) => s.currentStreak);
@@ -51,7 +53,8 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(COLORS: ColorScheme) {
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
   hero: { alignItems: 'center', marginBottom: 20 },
   heroEmoji: { fontSize: 48 },
@@ -82,4 +85,5 @@ const styles = StyleSheet.create({
   titleName: { color: COLORS.text, fontWeight: '700' },
   titleReq: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
   unlockedBadge: { color: COLORS.success, fontWeight: '700', fontSize: 12 },
-});
+  });
+}
