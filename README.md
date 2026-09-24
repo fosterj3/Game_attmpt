@@ -12,7 +12,7 @@ npx expo export --platform web
 npx eas deploy --prod --non-interactive
 ```
 
-A mobile match-3 puzzle game built with Expo (React Native + TypeScript), designed around the engagement mechanics that drive retention in games like Candy Crush and Royal Match:
+A mobile match-3 puzzle game built with Expo (React Native + TypeScript), designed around proven engagement and retention mechanics for casual mobile puzzle games:
 
 - **Core loop** — swap tiles, trigger matches and cascades, hit a score target within a move limit. Fast, frequent wins.
 - **Progression & mastery** — a level map that unlocks sequentially, with 1-3 star ratings per level.
