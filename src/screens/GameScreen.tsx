@@ -4,12 +4,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import BoardView from '../components/BoardView';
 import ComboPopup, { ComboEvent } from '../components/ComboPopup';
+import ContinueOfferModal from '../components/ContinueOfferModal';
 import DialogueModal from '../components/DialogueModal';
 import HowToPlayModal from '../components/HowToPlayModal';
 import InfoModal from '../components/InfoModal';
 import LevelResultModal from '../components/LevelResultModal';
 import WagerModal from '../components/WagerModal';
 import { getEffectiveLevel, starsForScore } from '../data/levels';
+import { getBoost } from '../data/shop';
 import { getChapter } from '../data/story';
 import {
   clearMatches,
@@ -59,6 +61,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const resolveWager = usePlayerStore((s) => s.resolveWager);
   const inventory = usePlayerStore((s) => s.inventory);
   const consumeBoost = usePlayerStore((s) => s.consumeBoost);
+  const purchaseBoost = usePlayerStore((s) => s.purchaseBoost);
+  const coins = usePlayerStore((s) => s.coins);
   const isStory = activeMode === 'story' && !!chapter;
   const hasTimer = level.timeLimitSeconds != null;
 
@@ -79,6 +83,11 @@ export default function GameScreen({ route, navigation }: Props) {
   const [wagerAccepted, setWagerAccepted] = useState(false);
   const [hint, setHint] = useState<{ a: Position; b: Position } | null>(null);
   const [freezeActive, setFreezeActive] = useState(false);
+  const [continueOffer, setContinueOffer] = useState<{
+    reason: 'moves' | 'time';
+    pendingScore: number;
+    movesRemaining: number;
+  } | null>(null);
   const [result, setResult] = useState<{
     won: boolean;
     score: number;
@@ -113,6 +122,7 @@ export default function GameScreen({ route, navigation }: Props) {
     setFallSeed((s) => s + 1);
     setHint(null);
     setFreezeActive(false);
+    setContinueOffer(null);
     return true;
   };
 
@@ -124,7 +134,7 @@ export default function GameScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isPaused = storyPhase !== 'playing' || howToPlayVisible || outOfLivesVisible || !!result;
+  const isPaused = storyPhase !== 'playing' || howToPlayVisible || outOfLivesVisible || !!result || !!continueOffer;
 
   useEffect(() => {
     if (!hasTimer || isPaused || finished || freezeActive) return;
@@ -135,8 +145,8 @@ export default function GameScreen({ route, navigation }: Props) {
   }, [hasTimer, isPaused, finished, freezeActive]);
 
   useEffect(() => {
-    if (hasTimer && timeLeft === 0 && !finished) {
-      finishLevel(scoreRef.current);
+    if (hasTimer && timeLeft === 0 && !finished && !continueOffer) {
+      offerContinueOrFinish('time', scoreRef.current, movesLeft);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
@@ -175,6 +185,48 @@ export default function GameScreen({ route, navigation }: Props) {
     );
     const wagerResult = isStory && wagerAccepted ? resolveWager(won) : null;
     setResult({ won, score: finalScore, stars, coinsEarned, moveBonusCoins: bonusCoins, wagerResult });
+  };
+
+  // Running out of moves/time doesn't immediately end the attempt - offer a
+  // chance to buy (or spend an owned) Extra Moves / Freeze Time boost and
+  // keep going, same as the boost tray already lets you do proactively.
+  const offerContinueOrFinish = (reason: 'moves' | 'time', pendingScore: number, movesRemaining: number) => {
+    if (finished) return;
+    setContinueOffer({ reason, pendingScore, movesRemaining });
+  };
+
+  const continueBoostId = continueOffer?.reason === 'time' ? 'freezeTime' : 'extraMoves';
+
+  const grantContinue = () => {
+    if (!continueOffer) return;
+    if (continueOffer.reason === 'moves') {
+      setMovesLeft((m) => m + 3);
+    } else {
+      setTimeLeft(10);
+    }
+    setContinueOffer(null);
+  };
+
+  const handleUseOwnedContinue = () => {
+    if (!continueOffer || inventory[continueBoostId] <= 0) return;
+    if (!consumeBoost(continueBoostId)) return;
+    playSound('tap');
+    grantContinue();
+  };
+
+  const handleBuyAndUseContinue = () => {
+    if (!continueOffer) return;
+    if (!purchaseBoost(continueBoostId)) return;
+    if (!consumeBoost(continueBoostId)) return;
+    playSound('tap');
+    grantContinue();
+  };
+
+  const handleDeclineContinue = () => {
+    if (!continueOffer) return;
+    const { pendingScore, movesRemaining } = continueOffer;
+    setContinueOffer(null);
+    finishLevel(pendingScore, movesRemaining);
   };
 
   const handleResultContinue = () => {
@@ -231,7 +283,7 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
     if (movesRemaining <= 0) {
-      finishLevel(runningScore, movesRemaining);
+      offerContinueOrFinish('moves', runningScore, movesRemaining);
       return;
     }
     if (!hasAnyValidMove(current)) {
@@ -240,7 +292,7 @@ export default function GameScreen({ route, navigation }: Props) {
     }
   };
 
-  const canUseBoosts = storyPhase === 'playing' && !busy && !finished;
+  const canUseBoosts = storyPhase === 'playing' && !busy && !finished && !continueOffer;
 
   const useHintBoost = () => {
     if (!canUseBoosts || inventory.hint <= 0) return;
@@ -268,7 +320,7 @@ export default function GameScreen({ route, navigation }: Props) {
   };
 
   const onTilePress = (pos: Position) => {
-    if (storyPhase !== 'playing' || busy || finished) return;
+    if (storyPhase !== 'playing' || busy || finished || continueOffer) return;
     setHint(null);
     if (!selected) {
       setSelected(pos);
@@ -431,6 +483,19 @@ export default function GameScreen({ route, navigation }: Props) {
           navigation.goBack();
         }}
       />
+
+      {continueOffer && (
+        <ContinueOfferModal
+          visible
+          reason={continueOffer.reason}
+          coins={coins}
+          ownedCount={inventory[continueBoostId]}
+          price={getBoost(continueBoostId).price}
+          onUseOwned={handleUseOwnedContinue}
+          onBuyAndUse={handleBuyAndUseContinue}
+          onDecline={handleDeclineContinue}
+        />
+      )}
     </View>
   );
 }
