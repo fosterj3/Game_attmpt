@@ -254,6 +254,26 @@ export default function BlitzScreen({ navigation }: Props) {
     setResultVisible(true);
   };
 
+  // Registers one match (the player's own swap, or any cascade that falls
+  // out of it) toward the fire streak - rapid-fire cascades count exactly
+  // like rapid-fire swaps, since both are "another match within the
+  // window." Returns whether this match is the one that crosses the
+  // ignite threshold.
+  const registerMatchForFire = (): boolean => {
+    const now = Date.now();
+    const withinWindow = lastMatchAtRef.current !== null && now - lastMatchAtRef.current <= FIRE_WINDOW_MS;
+    const newStreak = withinWindow ? streakRef.current + 1 : 1;
+    streakRef.current = newStreak;
+    lastMatchAtRef.current = now;
+    const justIgnited = newStreak >= FIRE_THRESHOLD && !fireActiveRef.current;
+    if (justIgnited) {
+      fireActiveRef.current = true;
+      setFireActive(true);
+      recordQuestProgress('igniteFire', 1);
+    }
+    return justIgnited;
+  };
+
   const runCascades = async (startingBoard: Board) => {
     let current = startingBoard;
     let runningScore = score;
@@ -262,6 +282,19 @@ export default function BlitzScreen({ navigation }: Props) {
     while (true) {
       const matches = findMatchedPositions(current);
       if (matches.length === 0) break;
+
+      const justIgnited = registerMatchForFire();
+      if (justIgnited) {
+        setIgniting(true);
+        playSound('fire');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        await delay(IGNITE_PAUSE_MS);
+        setIgniting(false);
+        // The ignite freeze is a forced celebration, not the player slowing
+        // down - restart the fire-pace clock from when they regain control
+        // so the freeze itself can never be what makes fire expire.
+        lastMatchAtRef.current = Date.now();
+      }
 
       const clearedIds = new Set(matches.map(({ row, col }) => current[row][col]!.id));
       const basePoints = scoreForClear(matches.length);
@@ -322,38 +355,13 @@ export default function BlitzScreen({ navigation }: Props) {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const now = Date.now();
-    const withinWindow = lastMatchAtRef.current !== null && now - lastMatchAtRef.current <= FIRE_WINDOW_MS;
-    const newStreak = withinWindow ? streakRef.current + 1 : 1;
-    streakRef.current = newStreak;
-    lastMatchAtRef.current = now;
-    const justIgnited = newStreak >= FIRE_THRESHOLD && !fireActiveRef.current;
-    if (justIgnited) {
-      fireActiveRef.current = true;
-      setFireActive(true);
-      recordQuestProgress('igniteFire', 1);
-    }
-
     setBusy(true);
     setSwapPair({ a: from, b: pos });
     swapProgress.setValue(0);
-    Animated.timing(swapProgress, { toValue: 1, duration: 130, useNativeDriver: true }).start(async () => {
+    Animated.timing(swapProgress, { toValue: 1, duration: 130, useNativeDriver: true }).start(() => {
       setSwapPair(null);
       swapProgress.setValue(0);
       setBoard(nextBoard);
-
-      if (justIgnited) {
-        setIgniting(true);
-        playSound('fire');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        await delay(IGNITE_PAUSE_MS);
-        setIgniting(false);
-        // The ignite freeze is a forced celebration, not the player slowing
-        // down - restart the fire-pace clock from when they regain control
-        // so the freeze itself can never be what makes fire expire.
-        lastMatchAtRef.current = Date.now();
-      }
-
       runCascades(nextBoard);
     });
   };
