@@ -94,6 +94,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
     zIndex: 100,
+    // Deliberately theme-independent - this is a dramatic full-screen
+    // takeover, so its own dark backdrop keeps the fixed gold/cream text
+    // legible whether the app is in light or dark mode.
+    backgroundColor: 'rgba(10,8,24,0.55)',
   },
   flame: {
     position: 'absolute',

@@ -22,7 +22,7 @@ import {
 import { chainTierFor, getComboMessage } from '../game/combo';
 import { startMusic, setMusicTier, stopMusic, pauseMusic, resumeMusic } from '../game/music';
 import { playSound, SoundName } from '../game/sound';
-import { useColors, ColorScheme } from '../game/theme';
+import { useColors, withAlpha, ColorScheme } from '../game/theme';
 import { Board, Position } from '../game/types';
 import { RootStackParamList } from '../navigation/types';
 import { usePlayerStore } from '../state/playerStore';
@@ -507,7 +507,7 @@ function createStyles(COLORS: ColorScheme) {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(18,20,43,0.92)',
+    backgroundColor: withAlpha(COLORS.background, 0.95),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

@@ -31,6 +31,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
+      <Text style={styles.gameTitle}>Cascade Quest</Text>
       <View style={styles.topBar}>
         <Pressable onPress={() => navigation.navigate('Profile')} style={styles.profileChip}>
           <Text style={styles.profileEmoji}>{title.emoji}</Text>
@@ -120,6 +121,13 @@ function createStyles(COLORS: ColorScheme) {
     flex: 1,
     backgroundColor: COLORS.background,
     paddingTop: 56,
+  },
+  gameTitle: {
+    color: COLORS.text,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   topBar: {
     flexDirection: 'row',

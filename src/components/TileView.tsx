@@ -91,7 +91,7 @@ export default function TileView({
             transform,
             opacity: popOpacity,
             borderWidth: selected ? 3 : hinted ? 3 : 0,
-            borderColor: selected ? '#FFFFFF' : COLORS.accent,
+            borderColor: selected ? COLORS.text : COLORS.accent,
           },
         ]}
       />
@@ -116,7 +116,6 @@ function createStyles(COLORS: ColorScheme) {
   tile: {
     flex: 1,
     borderRadius: 12,
-    borderColor: '#FFFFFF',
   },
   hintRing: {
     position: 'absolute',

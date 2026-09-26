@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { useColors, ColorScheme } from '../game/theme';
+import { useColors, withAlpha, ColorScheme } from '../game/theme';
 
 type Props = {
   value: number | 'GO' | null;
@@ -46,7 +46,7 @@ function createStyles(COLORS: ColorScheme) {
   },
   dim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(18,20,43,0.35)',
+    backgroundColor: withAlpha(COLORS.background, 0.45),
   },
   number: {
     color: COLORS.text,

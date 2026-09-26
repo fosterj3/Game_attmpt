@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DialogueLine } from '../data/story';
-import { useColors, ColorScheme } from '../game/theme';
+import { useColors, withAlpha, ColorScheme } from '../game/theme';
 
 type Props = {
   visible: boolean;
@@ -34,7 +34,9 @@ export default function DialogueModal({ visible, chapterTitle, lines, onDone }: 
         <View style={[styles.card, { borderColor: line.tint }]}>
           <View style={styles.speakerRow}>
             <Text style={styles.portrait}>{line.portrait}</Text>
-            <Text style={[styles.speakerName, { color: line.tint }]}>{line.speaker}</Text>
+            <View style={[styles.speakerChip, { backgroundColor: withAlpha(line.tint, 0.18) }]}>
+              <Text style={[styles.speakerName, { color: COLORS.text }]}>{line.speaker}</Text>
+            </View>
           </View>
           <Text style={styles.text}>{line.text}</Text>
           <Text style={styles.tapHint}>
@@ -71,6 +73,7 @@ function createStyles(COLORS: ColorScheme) {
   },
   speakerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   portrait: { fontSize: 24 },
+  speakerChip: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   speakerName: { fontWeight: '800', fontSize: 15 },
   text: { color: COLORS.text, fontSize: 15, lineHeight: 21 },
   tapHint: { color: COLORS.textMuted, fontSize: 11, alignSelf: 'flex-end', marginTop: 4 },

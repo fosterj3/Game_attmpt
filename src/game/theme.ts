@@ -27,7 +27,7 @@ export const DARK_COLORS: ColorScheme = {
 };
 
 export const LIGHT_COLORS: ColorScheme = {
-  background: '#F3F3FA',
+  background: '#F5F3ED',
   surface: '#FFFFFF',
   surfaceLight: '#ECEBFA',
   primary: '#6A4CEF',
@@ -46,4 +46,15 @@ export const COLORS = DARK_COLORS;
 export function useColors(): ColorScheme {
   const themeMode = usePlayerStore((s) => s.themeMode);
   return themeMode === 'light' ? LIGHT_COLORS : DARK_COLORS;
+}
+
+/** Adds alpha to a `#rrggbb` hex color - for tinted overlays that should
+ * follow the current theme's background/surface instead of being a
+ * hardcoded dark color that looks wrong in light mode. */
+export function withAlpha(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

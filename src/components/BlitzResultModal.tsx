@@ -155,9 +155,9 @@ function createStyles(COLORS: ColorScheme) {
   sparkle: { fontSize: 20 },
   badge: { fontSize: 52 },
   title: { color: COLORS.text, fontSize: 24, fontWeight: '800', marginTop: 4 },
-  newBest: { color: '#FFE066', fontWeight: '800', fontSize: 16, marginTop: 4 },
+  newBest: { color: COLORS.accent, fontWeight: '800', fontSize: 16, marginTop: 4 },
   scoreText: { color: COLORS.text, fontSize: 28, fontWeight: '800', marginTop: 10 },
-  scoreTextBest: { color: '#FFE066', fontSize: 34 },
+  scoreTextBest: { color: COLORS.accent, fontSize: 34 },
   bestText: { color: COLORS.textMuted, fontSize: 13, marginTop: 2 },
   rankText: { color: COLORS.textMuted, fontSize: 12, marginTop: 4 },
   rewardBox: {
@@ -171,7 +171,7 @@ function createStyles(COLORS: ColorScheme) {
   },
   rewardLine: { color: COLORS.accent, fontWeight: '800', fontSize: 16 },
   rewardBreakdown: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
-  milestoneLine: { color: '#FFE066', fontWeight: '700', fontSize: 12, marginTop: 4 },
+  milestoneLine: { color: COLORS.accent, fontWeight: '700', fontSize: 12, marginTop: 4 },
   shareButton: {
     marginTop: 14,
     paddingVertical: 8,

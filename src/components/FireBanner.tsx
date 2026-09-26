@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   active: boolean;
@@ -38,7 +38,9 @@ export default function FireBanner({ active }: Props) {
         },
       ]}
     >
-      <Text style={styles.text}>{'🔥 ON FIRE! 2x 🔥'}</Text>
+      <View style={styles.pill}>
+        <Text style={styles.text}>{'🔥 ON FIRE! 2x 🔥'}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -51,6 +53,12 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 30,
+  },
+  pill: {
+    backgroundColor: 'rgba(20,10,0,0.55)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
   text: {
     color: '#FFD84C',
