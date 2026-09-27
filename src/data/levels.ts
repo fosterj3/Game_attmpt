@@ -13,22 +13,29 @@ export type LevelDef = LevelGoal & {
   titleStars: number;
 };
 
+// Target scores below are tuned so the required pace (targetScore /
+// moveLimit) stays within what's actually achievable through normal play -
+// mostly 3-matches (30 pts) with occasional bigger matches/cascades -
+// rather than requiring near-impossible luck on every single move. Pace
+// climbs gently and linearly from ~31 pts/move (level 1) to ~104 pts/move
+// (level 15, hardest); see the "solvability audit" note in project memory
+// for the full before/after numbers if these ever need revisiting.
 export const LEVELS: LevelDef[] = [
-  { id: 1, name: 'First Sparks', targetScore: 600, moveLimit: 18, titleStars: 2 },
-  { id: 2, name: 'Sugar Rush', targetScore: 900, moveLimit: 18, titleStars: 4 },
-  { id: 3, name: 'Chain Reaction', targetScore: 1200, moveLimit: 17, titleStars: 5 },
-  { id: 4, name: 'Cascade Falls', targetScore: 1600, moveLimit: 17, titleStars: 7 },
-  { id: 5, name: 'Combo Cliffs', targetScore: 2000, moveLimit: 16, titleStars: 8 },
-  { id: 6, name: 'Tile Storm', targetScore: 2500, moveLimit: 16, titleStars: 10 },
-  { id: 7, name: 'Grand Cascade', targetScore: 3000, moveLimit: 15, timeLimitSeconds: 90, titleStars: 12 },
-  { id: 8, name: 'Match Master', targetScore: 3600, moveLimit: 15, timeLimitSeconds: 80, titleStars: 15 },
-  { id: 9, name: 'Rising Stakes', targetScore: 4200, moveLimit: 14, timeLimitSeconds: 75, titleStars: 17 },
-  { id: 10, name: 'Legend\'s Trial', targetScore: 5000, moveLimit: 14, timeLimitSeconds: 70, titleStars: 20 },
-  { id: 11, name: 'Embers Stir', targetScore: 5600, moveLimit: 14, timeLimitSeconds: 65, titleStars: 22 },
-  { id: 12, name: 'The Ember Scout', targetScore: 6200, moveLimit: 13, timeLimitSeconds: 60, titleStars: 25 },
-  { id: 13, name: 'Two Shardweavers', targetScore: 6800, moveLimit: 13, timeLimitSeconds: 55, titleStars: 28 },
-  { id: 14, name: 'The Remnant Heart', targetScore: 7400, moveLimit: 12, timeLimitSeconds: 50, titleStars: 32 },
-  { id: 15, name: 'What Remains', targetScore: 8000, moveLimit: 12, timeLimitSeconds: 45, titleStars: 36 },
+  { id: 1, name: 'First Sparks', targetScore: 550, moveLimit: 18, titleStars: 2 },
+  { id: 2, name: 'Sugar Rush', targetScore: 600, moveLimit: 18, titleStars: 4 },
+  { id: 3, name: 'Chain Reaction', targetScore: 650, moveLimit: 17, titleStars: 5 },
+  { id: 4, name: 'Cascade Falls', targetScore: 700, moveLimit: 17, titleStars: 7 },
+  { id: 5, name: 'Combo Cliffs', targetScore: 750, moveLimit: 16, titleStars: 8 },
+  { id: 6, name: 'Tile Storm', targetScore: 800, moveLimit: 16, titleStars: 10 },
+  { id: 7, name: 'Grand Cascade', targetScore: 850, moveLimit: 15, timeLimitSeconds: 90, titleStars: 12 },
+  { id: 8, name: 'Match Master', targetScore: 900, moveLimit: 15, timeLimitSeconds: 80, titleStars: 15 },
+  { id: 9, name: 'Rising Stakes', targetScore: 950, moveLimit: 14, timeLimitSeconds: 75, titleStars: 17 },
+  { id: 10, name: 'Legend\'s Trial', targetScore: 1000, moveLimit: 14, timeLimitSeconds: 70, titleStars: 20 },
+  { id: 11, name: 'Embers Stir', targetScore: 1050, moveLimit: 14, timeLimitSeconds: 65, titleStars: 22 },
+  { id: 12, name: 'The Ember Scout', targetScore: 1100, moveLimit: 13, timeLimitSeconds: 60, titleStars: 25 },
+  { id: 13, name: 'Two Shardweavers', targetScore: 1150, moveLimit: 13, timeLimitSeconds: 55, titleStars: 28 },
+  { id: 14, name: 'The Remnant Heart', targetScore: 1200, moveLimit: 12, timeLimitSeconds: 50, titleStars: 32 },
+  { id: 15, name: 'What Remains', targetScore: 1250, moveLimit: 12, timeLimitSeconds: 45, titleStars: 36 },
 ];
 
 export function starsForScore(score: number, goal: LevelGoal): 0 | 1 | 2 | 3 {
