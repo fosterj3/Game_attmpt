@@ -4,6 +4,7 @@ import { getBlitzRank } from '../data/leaderboard';
 import { LEVELS, getLevel } from '../data/levels';
 import { QuestId, getQuestDef, pickDailyQuestIds } from '../data/quests';
 import { BoostId, getBoost } from '../data/shop';
+import { Board } from '../game/types';
 
 const STORAGE_KEY = 'match3.player.v1';
 
@@ -38,6 +39,21 @@ export const DAILY_CHEST_REWARDS = [20, 20, 30, 30, 40, 50, 50, 75, 100, 250];
 export type GameMode = 'arcade' | 'story';
 export type ThemeMode = 'dark' | 'light';
 export type Difficulty = 'easy' | 'medium' | 'hard';
+
+// A single in-progress (non-timed) level attempt, resumable later the same
+// day instead of forcing a restart every time the player navigates away.
+// targetScore/wagerAccepted are snapshotted at save time so a mid-day
+// difficulty change can't desync a resumed attempt from what it started
+// with.
+export type InProgressAttempt = {
+  levelId: number;
+  date: string;
+  board: Board;
+  score: number;
+  movesLeft: number;
+  targetScore: number;
+  wagerAccepted: boolean;
+};
 
 export type QuestProgress = { progress: number; claimed: boolean };
 
@@ -76,6 +92,7 @@ type PlayerState = {
   dailyQuestIds: QuestId[];
   dailyQuests: Partial<Record<QuestId, QuestProgress>>;
   lastChestOpenedDate: string | null;
+  inProgressAttempt: InProgressAttempt | null;
 
   hydrate: () => Promise<void>;
   recordDailyPlay: () => void;
@@ -105,6 +122,9 @@ type PlayerState = {
   canOpenDailyChest: () => boolean;
   openDailyChest: () => number;
   recordSeenBlitzRank: (rank: number) => void;
+  saveInProgressAttempt: (attempt: Omit<InProgressAttempt, 'date'>) => void;
+  getInProgressAttempt: (levelId: number) => InProgressAttempt | null;
+  clearInProgressAttempt: () => void;
 };
 
 async function persist(state: Partial<PlayerState>) {
@@ -133,6 +153,9 @@ async function persist(state: Partial<PlayerState>) {
     canOpenDailyChest,
     openDailyChest,
     recordSeenBlitzRank,
+    saveInProgressAttempt,
+    getInProgressAttempt,
+    clearInProgressAttempt,
     ...rest
   } = state as PlayerState;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
@@ -178,6 +201,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   dailyQuestIds: [],
   dailyQuests: {},
   lastChestOpenedDate: null,
+  inProgressAttempt: null,
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -190,6 +214,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().regenLivesIfDue();
     get().recordDailyPlay();
     get().ensureDailyQuests();
+    // A resumable attempt only makes sense on the day it was saved.
+    const stale = get().inProgressAttempt;
+    if (stale && stale.date !== todayString()) {
+      set({ inProgressAttempt: null });
+      persist({ ...get(), inProgressAttempt: null });
+    }
   },
 
   recordDailyPlay: () => {
@@ -465,5 +495,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   recordSeenBlitzRank: (rank) => {
     set({ lastSeenBlitzRank: rank });
     persist({ ...get(), lastSeenBlitzRank: rank });
+  },
+
+  saveInProgressAttempt: (attempt) => {
+    const next = { inProgressAttempt: { ...attempt, date: todayString() } };
+    set(next);
+    persist({ ...get(), ...next });
+  },
+
+  getInProgressAttempt: (levelId) => {
+    const saved = get().inProgressAttempt;
+    if (!saved || saved.levelId !== levelId || saved.date !== todayString()) return null;
+    return saved;
+  },
+
+  clearInProgressAttempt: () => {
+    set({ inProgressAttempt: null });
+    persist({ ...get(), inProgressAttempt: null });
   },
 }));

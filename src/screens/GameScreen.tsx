@@ -63,6 +63,9 @@ export default function GameScreen({ route, navigation }: Props) {
   const consumeBoost = usePlayerStore((s) => s.consumeBoost);
   const purchaseBoost = usePlayerStore((s) => s.purchaseBoost);
   const coins = usePlayerStore((s) => s.coins);
+  const saveInProgressAttempt = usePlayerStore((s) => s.saveInProgressAttempt);
+  const getInProgressAttempt = usePlayerStore((s) => s.getInProgressAttempt);
+  const clearInProgressAttempt = usePlayerStore((s) => s.clearInProgressAttempt);
   const isStory = activeMode === 'story' && !!chapter;
   const hasTimer = level.timeLimitSeconds != null;
 
@@ -70,6 +73,10 @@ export default function GameScreen({ route, navigation }: Props) {
   const [selected, setSelected] = useState<Position | null>(null);
   const [score, setScore] = useState(0);
   const [movesLeft, setMovesLeft] = useState(level.moveLimit);
+  // The target for THIS attempt, snapshotted at start/resume - kept
+  // separate from level.targetScore so a mid-day difficulty change can't
+  // desync a resumed attempt from what it originally started with.
+  const [activeTargetScore, setActiveTargetScore] = useState(level.targetScore);
   const [timeLeft, setTimeLeft] = useState<number | null>(level.timeLimitSeconds ?? null);
   const [busy, setBusy] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -105,16 +112,18 @@ export default function GameScreen({ route, navigation }: Props) {
     scoreRef.current = score;
   }, [score]);
 
-  const startAttempt = (): boolean => {
+  const startAttempt = (wagerAcceptedForSave: boolean = wagerAccepted): boolean => {
     const ok = spendLife();
     if (!ok) {
       setOutOfLivesVisible(true);
       return false;
     }
-    setBoard(generateBoard());
+    const freshBoard = generateBoard();
+    setBoard(freshBoard);
     setScore(0);
     scoreRef.current = 0;
     setMovesLeft(level.moveLimit);
+    setActiveTargetScore(level.targetScore);
     setTimeLeft(level.timeLimitSeconds ?? null);
     setFinished(false);
     setSelected(null);
@@ -123,10 +132,42 @@ export default function GameScreen({ route, navigation }: Props) {
     setHint(null);
     setFreezeActive(false);
     setContinueOffer(null);
+    if (!hasTimer) {
+      saveInProgressAttempt({
+        levelId,
+        board: freshBoard,
+        score: 0,
+        movesLeft: level.moveLimit,
+        targetScore: level.targetScore,
+        wagerAccepted: wagerAcceptedForSave,
+      });
+    }
     return true;
   };
 
   useEffect(() => {
+    if (!hasTimer) {
+      const saved = getInProgressAttempt(levelId);
+      if (saved) {
+        attemptStartedRef.current = true;
+        const restoredBoard = hasAnyValidMove(saved.board) ? saved.board : generateBoard();
+        setBoard(restoredBoard);
+        setScore(saved.score);
+        scoreRef.current = saved.score;
+        setMovesLeft(saved.movesLeft);
+        setActiveTargetScore(saved.targetScore);
+        setWagerAccepted(saved.wagerAccepted);
+        setFinished(false);
+        setStoryPhase('playing');
+        setFallSeed((s) => s + 1);
+        if (saved.movesLeft <= 0) {
+          // They left exactly as moves ran out, before deciding on a
+          // continue offer - resolve it now instead of leaving a dead end.
+          offerContinueOrFinish('moves', saved.score, 0);
+        }
+        return;
+      }
+    }
     if (attemptStartedRef.current) return;
     if (isStory) return; // wait for the "before" dialogue to finish
     attemptStartedRef.current = true;
@@ -175,7 +216,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const finishLevel = (finalScore: number, movesRemaining: number = movesLeft) => {
     if (finished) return;
     setFinished(true);
-    const stars = starsForScore(finalScore, level);
+    clearInProgressAttempt();
+    const stars = starsForScore(finalScore, { ...level, targetScore: activeTargetScore });
     const { coinsEarned, bonusCoins } = completeLevel(level.id, finalScore, stars, movesRemaining);
     const won = stars > 0;
     if (won) recordQuestProgress('completeLevel', 1);
@@ -278,17 +320,41 @@ export default function GameScreen({ route, navigation }: Props) {
 
     setBusy(false);
 
-    if (runningScore >= level.targetScore) {
+    if (runningScore >= activeTargetScore) {
       finishLevel(runningScore, movesRemaining);
       return;
     }
+
     if (movesRemaining <= 0) {
+      if (!hasTimer) {
+        saveInProgressAttempt({
+          levelId,
+          board: current,
+          score: runningScore,
+          movesLeft: movesRemaining,
+          targetScore: activeTargetScore,
+          wagerAccepted,
+        });
+      }
       offerContinueOrFinish('moves', runningScore, movesRemaining);
       return;
     }
+
     if (!hasAnyValidMove(current)) {
-      setBoard(generateBoard());
+      current = generateBoard();
+      setBoard(current);
       setFallSeed((s) => s + 1);
+    }
+
+    if (!hasTimer) {
+      saveInProgressAttempt({
+        levelId,
+        board: current,
+        score: runningScore,
+        movesLeft: movesRemaining,
+        targetScore: activeTargetScore,
+        wagerAccepted,
+      });
     }
   };
 
@@ -355,7 +421,7 @@ export default function GameScreen({ route, navigation }: Props) {
     });
   };
 
-  const progressPct = Math.min(100, Math.round((score / level.targetScore) * 100));
+  const progressPct = Math.min(100, Math.round((score / activeTargetScore) * 100));
   const headerTitle = isStory && chapter ? chapter.title : level.name;
   const movesLow = movesLeft <= 3;
   const timeLow = hasTimer && (timeLeft ?? 0) <= 10;
@@ -424,7 +490,7 @@ export default function GameScreen({ route, navigation }: Props) {
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
       </View>
-      <Text style={styles.scoreText}>{score} / {level.targetScore} pts</Text>
+      <Text style={styles.scoreText}>{score} / {activeTargetScore} pts</Text>
 
       <View style={styles.boardWrap}>
         <ComboPopup event={comboEvent} />
@@ -464,7 +530,7 @@ export default function GameScreen({ route, navigation }: Props) {
           visible
           won={result.won}
           score={result.score}
-          target={level.targetScore}
+          target={activeTargetScore}
           stars={result.stars}
           coinsEarned={result.coinsEarned}
           moveBonusCoins={result.moveBonusCoins}
