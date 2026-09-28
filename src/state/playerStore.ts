@@ -76,6 +76,10 @@ type PlayerState = {
   lastLifeLostAt: number | null;
   currentStreak: number;
   lastPlayedDate: string | null;
+  // Every local calendar date on which the player actually completed a
+  // level or Blitz run - powers the streak calendar. Keyed by 'YYYY-MM-DD'
+  // for O(1) lookup.
+  playedDates: Record<string, true>;
   levelProgress: Record<number, LevelProgress>;
   unlockedLevelId: number;
   hasSeenHowToPlay: boolean;
@@ -185,6 +189,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   lastLifeLostAt: null,
   currentStreak: 0,
   lastPlayedDate: null,
+  playedDates: {},
   levelProgress: {},
   unlockedLevelId: 1,
   hasSeenHowToPlay: false,
@@ -212,7 +217,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ hydrated: true });
     }
     get().regenLivesIfDue();
-    get().recordDailyPlay();
     get().ensureDailyQuests();
     // A resumable attempt only makes sense on the day it was saved.
     const stale = get().inProgressAttempt;
@@ -224,7 +228,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   recordDailyPlay: () => {
     const today = todayString();
-    const { lastPlayedDate, currentStreak } = get();
+    const { lastPlayedDate, currentStreak, playedDates } = get();
     if (lastPlayedDate === today) return;
 
     let nextStreak = 1;
@@ -232,7 +236,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const gap = daysBetween(lastPlayedDate, today);
       nextStreak = gap === 1 ? currentStreak + 1 : 1;
     }
-    const next = { currentStreak: nextStreak, lastPlayedDate: today };
+    const next = {
+      currentStreak: nextStreak,
+      lastPlayedDate: today,
+      playedDates: { ...playedDates, [today]: true as const },
+    };
     set(next);
     persist({ ...get(), ...next });
   },
@@ -267,6 +275,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   completeLevel: (levelId, score, stars, movesRemaining = 0) => {
+    get().recordDailyPlay();
     const { levelProgress, unlockedLevelId, coins, difficulty } = get();
     const existing = levelProgress[levelId];
     const improved = !existing || stars > existing.bestStars || score > existing.bestScore;
@@ -340,6 +349,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   completeBlitzRun: (score) => {
+    get().recordDailyPlay();
     const { coins, blitzBestScore, bestBlitzRankAchieved } = get();
     const isNewBest = score > blitzBestScore;
     const newBestScore = isNewBest ? score : blitzBestScore;
