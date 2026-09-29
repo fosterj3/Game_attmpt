@@ -112,7 +112,7 @@ export default function StreakCalendarModal({ visible, onClose, playedDates, cur
           </View>
 
           <Text style={styles.footnote}>
-            {'🔥'} {playedCountThisMonth} day{playedCountThisMonth === 1 ? '' : 's'} played this month · {currentStreak}-day current streak
+            {'🔥'} {currentStreak}-day current streak · {playedCountThisMonth} played in {MONTH_NAMES[viewMonth]}
           </Text>
 
           <Pressable style={styles.closeButton} onPress={onClose}>

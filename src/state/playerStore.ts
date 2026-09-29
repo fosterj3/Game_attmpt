@@ -182,6 +182,29 @@ function daysBetween(a: string, b: string): number {
   return Math.round((dateB - dateA) / (1000 * 60 * 60 * 24));
 }
 
+// playedDates was introduced after currentStreak already existed, so a
+// returning player's existing streak has no matching calendar entries yet.
+// A streak of N days ending on lastPlayedDate means (by definition) N
+// consecutive days were played up to and including that date - backfill
+// those into playedDates so the calendar matches the streak immediately,
+// not just starting from the next time they play.
+function backfillPlayedDatesForStreak(
+  lastPlayedDate: string,
+  currentStreak: number,
+  playedDates: Record<string, true>
+): Record<string, true> {
+  const next = { ...playedDates };
+  const cursor = new Date(lastPlayedDate + 'T00:00:00');
+  for (let i = 0; i < currentStreak; i++) {
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, '0');
+    const d = String(cursor.getDate()).padStart(2, '0');
+    next[`${y}-${m}-${d}`] = true;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return next;
+}
+
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   hydrated: false,
   coins: 100,
@@ -224,12 +247,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ inProgressAttempt: null });
       persist({ ...get(), inProgressAttempt: null });
     }
+    // One-time backfill for players whose streak predates playedDates
+    // existing at all - see backfillPlayedDatesForStreak above.
+    const { lastPlayedDate, currentStreak, playedDates } = get();
+    if (lastPlayedDate && currentStreak > 0) {
+      const backfilled = backfillPlayedDatesForStreak(lastPlayedDate, currentStreak, playedDates);
+      set({ playedDates: backfilled });
+      persist({ ...get(), playedDates: backfilled });
+    }
   },
 
   recordDailyPlay: () => {
     const today = todayString();
     const { lastPlayedDate, currentStreak, playedDates } = get();
-    if (lastPlayedDate === today) return;
+    if (lastPlayedDate === today) {
+      // Streak already advanced today (or is being re-recorded by a second
+      // completion) - still make sure today is marked played, in case an
+      // earlier transition left lastPlayedDate set without a matching
+      // playedDates entry.
+      if (!playedDates[today]) {
+        const next = { playedDates: { ...playedDates, [today]: true as const } };
+        set(next);
+        persist({ ...get(), ...next });
+      }
+      return;
+    }
 
     let nextStreak = 1;
     if (lastPlayedDate) {
